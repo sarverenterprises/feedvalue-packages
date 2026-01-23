@@ -22,7 +22,9 @@ import type { FeedValueEvents, EventHandler } from './types';
  * ```
  */
 export class TypedEventEmitter {
-  private listeners = new Map<keyof FeedValueEvents, Set<Function>>();
+  // Using a Map with proper typing - the inner Function type is acceptable here
+  // because we handle type safety at the public API level (on/off/emit methods)
+  private listeners = new Map<keyof FeedValueEvents, Set<(...args: unknown[]) => void>>();
 
   /**
    * Subscribe to an event
@@ -31,9 +33,26 @@ export class TypedEventEmitter {
    * @param handler - Event handler function
    */
   on<K extends keyof FeedValueEvents>(event: K, handler: EventHandler<K>): void {
-    const handlers = this.listeners.get(event) ?? new Set();
-    handlers.add(handler);
-    this.listeners.set(event, handlers);
+    if (!this.listeners.has(event)) {
+      this.listeners.set(event, new Set());
+    }
+    this.listeners.get(event)!.add(handler as (...args: unknown[]) => void);
+  }
+
+  /**
+   * Subscribe to an event for a single emission.
+   * The handler will be automatically removed after the first call.
+   *
+   * @param event - Event name
+   * @param handler - Event handler function
+   */
+  once<K extends keyof FeedValueEvents>(event: K, handler: EventHandler<K>): void {
+    const wrappedHandler = ((...args: unknown[]) => {
+      this.off(event, wrappedHandler as EventHandler<K>);
+      (handler as (...args: unknown[]) => void)(...args);
+    }) as EventHandler<K>;
+
+    this.on(event, wrappedHandler);
   }
 
   /**
@@ -51,7 +70,7 @@ export class TypedEventEmitter {
 
     const handlers = this.listeners.get(event);
     if (handlers) {
-      handlers.delete(handler);
+      handlers.delete(handler as (...args: unknown[]) => void);
       if (handlers.size === 0) {
         this.listeners.delete(event);
       }
@@ -79,27 +98,6 @@ export class TypedEventEmitter {
         }
       }
     }
-  }
-
-  /**
-   * Check if there are any listeners for an event
-   *
-   * @param event - Event name
-   * @returns True if there are listeners
-   */
-  hasListeners<K extends keyof FeedValueEvents>(event: K): boolean {
-    const handlers = this.listeners.get(event);
-    return handlers !== undefined && handlers.size > 0;
-  }
-
-  /**
-   * Get the number of listeners for an event
-   *
-   * @param event - Event name
-   * @returns Number of listeners
-   */
-  listenerCount<K extends keyof FeedValueEvents>(event: K): number {
-    return this.listeners.get(event)?.size ?? 0;
   }
 
   /**

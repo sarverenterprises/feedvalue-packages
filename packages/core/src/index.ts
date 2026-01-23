@@ -80,4 +80,4 @@ export { TypedEventEmitter } from './event-emitter';
 export { ApiClient, DEFAULT_API_BASE_URL } from './api-client';
 
 // Fingerprint (for advanced usage)
-export { generateFingerprint } from './fingerprint';
+export { generateFingerprint, clearFingerprint } from './fingerprint';

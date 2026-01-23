@@ -19,10 +19,29 @@ import type {
   UserTraits,
   FeedbackData,
   WidgetConfig,
+  EmojiSentiment,
 } from './types';
 import { TypedEventEmitter } from './event-emitter';
 import { ApiClient, DEFAULT_API_BASE_URL } from './api-client';
 import { generateFingerprint } from './fingerprint';
+
+/** Delay before auto-closing the success message (milliseconds) */
+const SUCCESS_AUTO_CLOSE_DELAY_MS = 3000;
+
+/**
+ * Valid sentiment values for feedback validation
+ */
+const VALID_SENTIMENTS: readonly EmojiSentiment[] = ['angry', 'disappointed', 'satisfied', 'excited'] as const;
+
+/**
+ * Maximum allowed message length (10,000 characters)
+ */
+const MAX_MESSAGE_LENGTH = 10000;
+
+/**
+ * Maximum allowed length for metadata string values (1,000 characters)
+ */
+const MAX_METADATA_VALUE_LENGTH = 1000;
 
 /**
  * Default configuration
@@ -92,6 +111,9 @@ export class FeedValue implements FeedValueInstance {
   private overlay: HTMLElement | null = null;
   private stylesInjected = false;
 
+  // Auto-close timeout reference (for cleanup on destroy)
+  private autoCloseTimeout: ReturnType<typeof setTimeout> | null = null;
+
   /**
    * Create a new FeedValue instance
    * Use FeedValue.init() for public API
@@ -158,7 +180,7 @@ export class FeedValue implements FeedValueInstance {
       this.log('Initializing...');
 
       // Generate fingerprint
-      const fingerprint = await generateFingerprint();
+      const fingerprint = generateFingerprint();
       this.apiClient.setFingerprint(fingerprint);
 
       // Fetch config
@@ -212,6 +234,12 @@ export class FeedValue implements FeedValueInstance {
    */
   destroy(): void {
     this.log('Destroying...');
+
+    // Clear auto-close timeout to prevent memory leak
+    if (this.autoCloseTimeout) {
+      clearTimeout(this.autoCloseTimeout);
+      this.autoCloseTimeout = null;
+    }
 
     // Remove DOM elements
     this.triggerButton?.remove();
@@ -355,15 +383,14 @@ export class FeedValue implements FeedValueInstance {
       throw new Error('Widget not ready');
     }
 
-    if (!feedback.message?.trim()) {
-      throw new Error('Feedback message is required');
-    }
+    // Validate feedback data before submission
+    this.validateFeedback(feedback);
 
     this.updateState({ isSubmitting: true });
 
     try {
       const fullFeedback: FeedbackData = {
-        message: feedback.message,
+        message: feedback.message!,
         sentiment: feedback.sentiment,
         customFieldValues: feedback.customFieldValues,
         metadata: {
@@ -387,6 +414,45 @@ export class FeedValue implements FeedValueInstance {
     }
   }
 
+  /**
+   * Validate feedback data before submission
+   * @throws Error if validation fails
+   */
+  private validateFeedback(feedback: Partial<FeedbackData>): void {
+    // Validate message is present and not empty
+    if (!feedback.message?.trim()) {
+      throw new Error('Feedback message is required');
+    }
+
+    // Validate message length
+    if (feedback.message.length > MAX_MESSAGE_LENGTH) {
+      throw new Error(`Feedback message exceeds maximum length of ${MAX_MESSAGE_LENGTH} characters`);
+    }
+
+    // Validate sentiment if provided
+    if (feedback.sentiment !== undefined && !VALID_SENTIMENTS.includes(feedback.sentiment)) {
+      throw new Error(`Invalid sentiment value. Must be one of: ${VALID_SENTIMENTS.join(', ')}`);
+    }
+
+    // Validate customFieldValues are string key-value pairs
+    if (feedback.customFieldValues) {
+      for (const [key, value] of Object.entries(feedback.customFieldValues)) {
+        if (typeof key !== 'string' || typeof value !== 'string') {
+          throw new Error('Custom field values must be strings');
+        }
+      }
+    }
+
+    // Validate metadata field lengths
+    if (feedback.metadata) {
+      for (const [key, value] of Object.entries(feedback.metadata)) {
+        if (typeof value === 'string' && value.length > MAX_METADATA_VALUE_LENGTH) {
+          throw new Error(`Metadata field "${key}" exceeds maximum length of ${MAX_METADATA_VALUE_LENGTH} characters`);
+        }
+      }
+    }
+  }
+
   // ===========================================================================
   // Events
   // ===========================================================================
@@ -395,8 +461,37 @@ export class FeedValue implements FeedValueInstance {
     this.emitter.on(event, callback);
   }
 
+  /**
+   * Subscribe to an event for a single emission.
+   * The handler will be automatically removed after the first call.
+   */
+  once<K extends keyof FeedValueEvents>(event: K, callback: EventHandler<K>): void {
+    this.emitter.once(event, callback);
+  }
+
   off<K extends keyof FeedValueEvents>(event: K, callback?: EventHandler<K>): void {
     this.emitter.off(event, callback);
+  }
+
+  /**
+   * Returns a promise that resolves when the widget is ready.
+   * Useful for programmatic initialization flows.
+   *
+   * @throws {Error} If initialization fails
+   */
+  async waitUntilReady(): Promise<void> {
+    if (this.state.isReady) {
+      return;
+    }
+
+    if (this.state.error) {
+      throw this.state.error;
+    }
+
+    return new Promise((resolve, reject) => {
+      this.once('ready', () => resolve());
+      this.once('error', (error) => reject(error));
+    });
   }
 
   // ===========================================================================
@@ -480,6 +575,30 @@ export class FeedValue implements FeedValueInstance {
   }
 
   /**
+   * Sanitize CSS to block potentially dangerous patterns
+   * Prevents CSS injection attacks via url(), @import, and other vectors
+   */
+  private sanitizeCSS(css: string): string {
+    // Block potentially dangerous CSS patterns
+    const BLOCKED_PATTERNS = [
+      /url\s*\(/gi,           // External resources
+      /@import/gi,            // External stylesheets
+      /expression\s*\(/gi,    // IE expressions
+      /javascript:/gi,        // JavaScript URLs
+      /behavior\s*:/gi,       // IE behaviors
+      /-moz-binding/gi,       // Firefox XBL
+    ];
+
+    for (const pattern of BLOCKED_PATTERNS) {
+      if (pattern.test(css)) {
+        console.warn('[FeedValue] Blocked potentially unsafe CSS pattern');
+        return '';  // Block entire CSS if unsafe pattern found
+      }
+    }
+    return css;
+  }
+
+  /**
    * Inject CSS styles
    */
   private injectStyles(): void {
@@ -492,12 +611,15 @@ export class FeedValue implements FeedValueInstance {
     styleEl.textContent = this.getBaseStyles(styling, config.position);
     document.head.appendChild(styleEl);
 
-    // Custom CSS - textContent is safe (no script execution)
+    // Custom CSS - sanitize to prevent CSS injection attacks
     if (styling.customCSS) {
-      const customStyleEl = document.createElement('style');
-      customStyleEl.id = 'fv-widget-custom-styles';
-      customStyleEl.textContent = styling.customCSS;
-      document.head.appendChild(customStyleEl);
+      const sanitizedCSS = this.sanitizeCSS(styling.customCSS);
+      if (sanitizedCSS) {
+        const customStyleEl = document.createElement('style');
+        customStyleEl.id = 'fv-widget-custom-styles';
+        customStyleEl.textContent = sanitizedCSS;
+        document.head.appendChild(customStyleEl);
+      }
     }
   }
 
@@ -833,6 +955,12 @@ export class FeedValue implements FeedValueInstance {
   private showSuccess(): void {
     if (!this.modal || !this.widgetConfig) return;
 
+    // Clear any existing auto-close timeout to prevent race conditions
+    if (this.autoCloseTimeout) {
+      clearTimeout(this.autoCloseTimeout);
+      this.autoCloseTimeout = null;
+    }
+
     // Clear modal
     this.modal.textContent = '';
 
@@ -864,13 +992,14 @@ export class FeedValue implements FeedValueInstance {
 
     this.modal.appendChild(successDiv);
 
-    // Auto-close after 3 seconds
-    setTimeout(() => {
+    // Auto-close after delay (store reference for cleanup)
+    this.autoCloseTimeout = setTimeout(() => {
       if (this.state.isOpen) {
         this.close();
         this.resetForm();
       }
-    }, 3000);
+      this.autoCloseTimeout = null;
+    }, SUCCESS_AUTO_CLOSE_DELAY_MS);
   }
 
   /**

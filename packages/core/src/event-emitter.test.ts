@@ -12,8 +12,8 @@ describe('TypedEventEmitter', () => {
     it('should register an event handler', () => {
       const handler = vi.fn();
       emitter.on('ready', handler);
-      expect(emitter.hasListeners('ready')).toBe(true);
-      expect(emitter.listenerCount('ready')).toBe(1);
+      emitter.emit('ready');
+      expect(handler).toHaveBeenCalledTimes(1);
     });
 
     it('should register multiple handlers for the same event', () => {
@@ -21,7 +21,71 @@ describe('TypedEventEmitter', () => {
       const handler2 = vi.fn();
       emitter.on('ready', handler1);
       emitter.on('ready', handler2);
-      expect(emitter.listenerCount('ready')).toBe(2);
+      emitter.emit('ready');
+      expect(handler1).toHaveBeenCalledTimes(1);
+      expect(handler2).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('once()', () => {
+    it('should call handler only once', () => {
+      const handler = vi.fn();
+      emitter.once('ready', handler);
+      emitter.emit('ready');
+      emitter.emit('ready');
+      emitter.emit('ready');
+      expect(handler).toHaveBeenCalledTimes(1);
+    });
+
+    it('should pass arguments to the handler', () => {
+      const handler = vi.fn();
+      emitter.once('error', handler);
+      const error = new Error('Test error');
+      emitter.emit('error', error);
+      expect(handler).toHaveBeenCalledWith(error);
+    });
+
+    it('should work alongside regular on() handlers', () => {
+      const onceHandler = vi.fn();
+      const onHandler = vi.fn();
+      emitter.once('ready', onceHandler);
+      emitter.on('ready', onHandler);
+
+      emitter.emit('ready');
+      expect(onceHandler).toHaveBeenCalledTimes(1);
+      expect(onHandler).toHaveBeenCalledTimes(1);
+
+      emitter.emit('ready');
+      expect(onceHandler).toHaveBeenCalledTimes(1); // Still 1
+      expect(onHandler).toHaveBeenCalledTimes(2);   // Incremented
+    });
+
+    it('should handle multiple once() handlers for the same event', () => {
+      const handler1 = vi.fn();
+      const handler2 = vi.fn();
+      emitter.once('ready', handler1);
+      emitter.once('ready', handler2);
+
+      emitter.emit('ready');
+      expect(handler1).toHaveBeenCalledTimes(1);
+      expect(handler2).toHaveBeenCalledTimes(1);
+
+      emitter.emit('ready');
+      expect(handler1).toHaveBeenCalledTimes(1);
+      expect(handler2).toHaveBeenCalledTimes(1);
+    });
+
+    it('should pass event data for submit event', () => {
+      const handler = vi.fn();
+      emitter.once('submit', handler);
+
+      const feedbackData = {
+        message: 'Great product!',
+        sentiment: 'excited' as const,
+      };
+      emitter.emit('submit', feedbackData);
+
+      expect(handler).toHaveBeenCalledWith(feedbackData);
     });
   });
 
@@ -32,7 +96,9 @@ describe('TypedEventEmitter', () => {
       emitter.on('ready', handler1);
       emitter.on('ready', handler2);
       emitter.off('ready', handler1);
-      expect(emitter.listenerCount('ready')).toBe(1);
+      emitter.emit('ready');
+      expect(handler1).not.toHaveBeenCalled();
+      expect(handler2).toHaveBeenCalledTimes(1);
     });
 
     it('should remove all handlers when no handler specified', () => {
@@ -41,7 +107,9 @@ describe('TypedEventEmitter', () => {
       emitter.on('ready', handler1);
       emitter.on('ready', handler2);
       emitter.off('ready');
-      expect(emitter.hasListeners('ready')).toBe(false);
+      emitter.emit('ready');
+      expect(handler1).not.toHaveBeenCalled();
+      expect(handler2).not.toHaveBeenCalled();
     });
 
     it('should handle removing non-existent handler gracefully', () => {
@@ -53,7 +121,8 @@ describe('TypedEventEmitter', () => {
       const handler = vi.fn();
       emitter.on('ready', handler);
       emitter.off('ready', handler);
-      expect(emitter.hasListeners('ready')).toBe(false);
+      emitter.emit('ready');
+      expect(handler).not.toHaveBeenCalled();
     });
   });
 
@@ -106,38 +175,21 @@ describe('TypedEventEmitter', () => {
     });
   });
 
-  describe('hasListeners()', () => {
-    it('should return false when no listeners registered', () => {
-      expect(emitter.hasListeners('ready')).toBe(false);
-    });
-
-    it('should return true when listeners registered', () => {
-      emitter.on('ready', vi.fn());
-      expect(emitter.hasListeners('ready')).toBe(true);
-    });
-  });
-
-  describe('listenerCount()', () => {
-    it('should return 0 when no listeners registered', () => {
-      expect(emitter.listenerCount('ready')).toBe(0);
-    });
-
-    it('should return correct count', () => {
-      emitter.on('ready', vi.fn());
-      emitter.on('ready', vi.fn());
-      expect(emitter.listenerCount('ready')).toBe(2);
-    });
-  });
-
   describe('removeAllListeners()', () => {
     it('should remove all listeners for all events', () => {
-      emitter.on('ready', vi.fn());
-      emitter.on('open', vi.fn());
-      emitter.on('close', vi.fn());
+      const readyHandler = vi.fn();
+      const openHandler = vi.fn();
+      const closeHandler = vi.fn();
+      emitter.on('ready', readyHandler);
+      emitter.on('open', openHandler);
+      emitter.on('close', closeHandler);
       emitter.removeAllListeners();
-      expect(emitter.hasListeners('ready')).toBe(false);
-      expect(emitter.hasListeners('open')).toBe(false);
-      expect(emitter.hasListeners('close')).toBe(false);
+      emitter.emit('ready');
+      emitter.emit('open');
+      emitter.emit('close');
+      expect(readyHandler).not.toHaveBeenCalled();
+      expect(openHandler).not.toHaveBeenCalled();
+      expect(closeHandler).not.toHaveBeenCalled();
     });
   });
 });

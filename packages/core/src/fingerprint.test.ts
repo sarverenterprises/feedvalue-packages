@@ -1,54 +1,66 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { generateFingerprint } from './fingerprint';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { generateFingerprint, clearFingerprint } from './fingerprint';
 
-describe('generateFingerprint', () => {
+describe('fingerprint', () => {
   beforeEach(() => {
-    // Setup minimal browser globals for happy-dom
-    vi.stubGlobal('screen', {
-      width: 1920,
-      height: 1080,
-      colorDepth: 24,
+    // Clear any stored fingerprint before each test
+    sessionStorage.clear();
+  });
+
+  describe('generateFingerprint', () => {
+    it('should return a valid UUID format', () => {
+      const fingerprint = generateFingerprint();
+      // UUID v4 format: xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx
+      expect(fingerprint).toMatch(
+        /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+      );
+    });
+
+    it('should return the same fingerprint within a session', () => {
+      const fp1 = generateFingerprint();
+      const fp2 = generateFingerprint();
+      expect(fp1).toBe(fp2);
+    });
+
+    it('should return different fingerprints after clearing', () => {
+      const fp1 = generateFingerprint();
+      clearFingerprint();
+      const fp2 = generateFingerprint();
+      expect(fp1).not.toBe(fp2);
+    });
+
+    it('should store fingerprint in sessionStorage', () => {
+      const fingerprint = generateFingerprint();
+      expect(sessionStorage.getItem('fv_fingerprint')).toBe(fingerprint);
+    });
+
+    it('should handle sessionStorage being unavailable', () => {
+      // Mock sessionStorage.setItem to throw
+      const originalSetItem = sessionStorage.setItem;
+      sessionStorage.setItem = vi.fn().mockImplementation(() => {
+        throw new Error('QuotaExceededError');
+      });
+
+      // Should not throw, should still return a fingerprint
+      expect(() => generateFingerprint()).not.toThrow();
+      const fp = generateFingerprint();
+      expect(fp).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
+
+      sessionStorage.setItem = originalSetItem;
     });
   });
 
-  afterEach(() => {
-    vi.unstubAllGlobals();
-  });
+  describe('clearFingerprint', () => {
+    it('should remove fingerprint from sessionStorage', () => {
+      generateFingerprint();
+      expect(sessionStorage.getItem('fv_fingerprint')).not.toBeNull();
 
-  it('should generate a non-empty fingerprint', async () => {
-    const fingerprint = await generateFingerprint();
-    expect(fingerprint).toBeTruthy();
-    expect(typeof fingerprint).toBe('string');
-    expect(fingerprint.length).toBeGreaterThan(0);
-  });
+      clearFingerprint();
+      expect(sessionStorage.getItem('fv_fingerprint')).toBeNull();
+    });
 
-  it('should generate consistent fingerprints for same environment', async () => {
-    const fp1 = await generateFingerprint();
-    const fp2 = await generateFingerprint();
-    expect(fp1).toBe(fp2);
-  });
-
-  it('should handle missing screen gracefully', async () => {
-    vi.stubGlobal('screen', undefined);
-    const fingerprint = await generateFingerprint();
-    expect(fingerprint).toBeTruthy();
-  });
-
-  it('should handle missing Intl gracefully', async () => {
-    const originalIntl = globalThis.Intl;
-    // @ts-expect-error - Testing undefined case
-    globalThis.Intl = undefined;
-    const fingerprint = await generateFingerprint();
-    expect(fingerprint).toBeTruthy();
-    globalThis.Intl = originalIntl;
-  });
-
-  it('should handle missing navigator gracefully', async () => {
-    const originalNavigator = globalThis.navigator;
-    // @ts-expect-error - Testing undefined case
-    globalThis.navigator = undefined;
-    const fingerprint = await generateFingerprint();
-    expect(fingerprint).toBeTruthy();
-    globalThis.navigator = originalNavigator;
+    it('should not throw if no fingerprint exists', () => {
+      expect(() => clearFingerprint()).not.toThrow();
+    });
   });
 });

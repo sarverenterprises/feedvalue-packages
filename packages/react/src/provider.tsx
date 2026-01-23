@@ -9,6 +9,7 @@
 
 import React, {
   createContext,
+  useCallback,
   useContext,
   useEffect,
   useRef,
@@ -21,6 +22,7 @@ import {
   type FeedValueConfig,
   type FeedValueState,
   type FeedbackData,
+  type UserTraits,
 } from '@feedvalue/core';
 
 /**
@@ -52,7 +54,7 @@ export interface FeedValueContextValue {
   /** Submit feedback programmatically */
   submit: (feedback: Partial<FeedbackData>) => Promise<void>;
   /** Identify user */
-  identify: (userId: string, traits?: Record<string, unknown>) => void;
+  identify: (userId: string, traits?: UserTraits) => void;
   /** Set user data */
   setData: (data: Record<string, string>) => void;
   /** Reset user data */
@@ -193,6 +195,27 @@ export function FeedValueProvider({
     getServerSnapshot
   );
 
+  // Stable callback references to prevent recreation on every state change
+  const open = useCallback(() => instanceRef.current?.open(), []);
+  const close = useCallback(() => instanceRef.current?.close(), []);
+  const toggle = useCallback(() => instanceRef.current?.toggle(), []);
+  const show = useCallback(() => instanceRef.current?.show(), []);
+  const hide = useCallback(() => instanceRef.current?.hide(), []);
+  const submit = useCallback(
+    (feedback: Partial<FeedbackData>) =>
+      instanceRef.current?.submit(feedback) ?? Promise.reject(new Error('Not initialized')),
+    []
+  );
+  const identify = useCallback(
+    (userId: string, traits?: UserTraits) => instanceRef.current?.identify(userId, traits),
+    []
+  );
+  const setData = useCallback(
+    (data: Record<string, string>) => instanceRef.current?.setData(data),
+    []
+  );
+  const reset = useCallback(() => instanceRef.current?.reset(), []);
+
   // Memoize context value to prevent unnecessary re-renders
   const value = useMemo<FeedValueContextValue>(
     () => ({
@@ -202,18 +225,17 @@ export function FeedValueProvider({
       isVisible: state.isVisible,
       error: state.error,
       isSubmitting: state.isSubmitting,
-      open: () => instanceRef.current?.open(),
-      close: () => instanceRef.current?.close(),
-      toggle: () => instanceRef.current?.toggle(),
-      show: () => instanceRef.current?.show(),
-      hide: () => instanceRef.current?.hide(),
-      submit: (feedback) =>
-        instanceRef.current?.submit(feedback) ?? Promise.reject(new Error('Not initialized')),
-      identify: (userId, traits) => instanceRef.current?.identify(userId, traits),
-      setData: (data) => instanceRef.current?.setData(data),
-      reset: () => instanceRef.current?.reset(),
+      open,
+      close,
+      toggle,
+      show,
+      hide,
+      submit,
+      identify,
+      setData,
+      reset,
     }),
-    [state]
+    [state, open, close, toggle, show, hide, submit, identify, setData, reset]
   );
 
   return (

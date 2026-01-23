@@ -303,8 +303,12 @@ export interface FeedValueInstance {
   // Events
   /** Subscribe to an event */
   on<K extends keyof FeedValueEvents>(event: K, callback: EventHandler<K>): void;
+  /** Subscribe to an event for a single emission */
+  once<K extends keyof FeedValueEvents>(event: K, callback: EventHandler<K>): void;
   /** Unsubscribe from an event */
   off<K extends keyof FeedValueEvents>(event: K, callback?: EventHandler<K>): void;
+  /** Returns a promise that resolves when the widget is ready */
+  waitUntilReady(): Promise<void>;
 
   // Configuration
   /** Update runtime configuration */

@@ -270,6 +270,67 @@ describe('FeedValue', () => {
 
       expect(callback).not.toHaveBeenCalled();
     });
+
+    it('should call once() handler only once', async () => {
+      const callback = vi.fn();
+      const instance = FeedValue.init({ widgetId: 'test-widget-123' });
+
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      instance.once('open', callback);
+
+      instance.open();
+      expect(callback).toHaveBeenCalledTimes(1);
+
+      instance.close();
+      instance.open();
+      expect(callback).toHaveBeenCalledTimes(1); // Still 1, not called again
+    });
+  });
+
+  describe('waitUntilReady()', () => {
+    it('should resolve immediately if already ready', async () => {
+      const instance = FeedValue.init({ widgetId: 'test-widget-123' });
+
+      // Wait for ready
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      // Should resolve immediately
+      await expect(instance.waitUntilReady()).resolves.toBeUndefined();
+    });
+
+    it('should wait for ready event', async () => {
+      const instance = FeedValue.init({ widgetId: 'test-widget-123' });
+
+      // Call waitUntilReady before it's ready
+      const readyPromise = instance.waitUntilReady();
+
+      // Wait for initialization to complete
+      await expect(readyPromise).resolves.toBeUndefined();
+      expect(instance.isReady()).toBe(true);
+    });
+
+    it('should reject if initialization fails', async () => {
+      // Make fetch fail
+      mockFetch.mockRejectedValueOnce(new Error('Network error'));
+
+      const instance = FeedValue.init({ widgetId: 'test-widget-123' });
+
+      await expect(instance.waitUntilReady()).rejects.toThrow('Network error');
+    });
+
+    it('should reject immediately if error already occurred', async () => {
+      // Make fetch fail
+      mockFetch.mockRejectedValueOnce(new Error('Network error'));
+
+      const instance = FeedValue.init({ widgetId: 'test-widget-123' });
+
+      // Wait for the error to be set
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      // Should reject immediately with the stored error
+      await expect(instance.waitUntilReady()).rejects.toThrow('Network error');
+    });
   });
 
   describe('configuration', () => {
@@ -335,6 +396,66 @@ describe('FeedValue', () => {
         })
       );
     });
+
+    it('should throw if message exceeds maximum length', async () => {
+      const instance = FeedValue.init({ widgetId: 'test-widget-123' });
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      const longMessage = 'a'.repeat(10001);
+      await expect(instance.submit({ message: longMessage })).rejects.toThrow(
+        'Feedback message exceeds maximum length of 10000 characters'
+      );
+    });
+
+    it('should throw for invalid sentiment value', async () => {
+      const instance = FeedValue.init({ widgetId: 'test-widget-123' });
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      await expect(
+        instance.submit({
+          message: 'Test feedback',
+          sentiment: 'invalid-sentiment' as any,
+        })
+      ).rejects.toThrow('Invalid sentiment value. Must be one of: angry, disappointed, satisfied, excited');
+    });
+
+    it('should accept valid sentiment values', async () => {
+      // Setup feedback response
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(mockConfigResponse),
+      }).mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ feedback_id: 'fb-123' }),
+      });
+
+      const instance = FeedValue.init({ widgetId: 'test-widget-123' });
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      // Should not throw for valid sentiment
+      await expect(
+        instance.submit({
+          message: 'Great product!',
+          sentiment: 'excited',
+        })
+      ).resolves.not.toThrow();
+    });
+
+    it('should throw if metadata field exceeds maximum length', async () => {
+      const instance = FeedValue.init({ widgetId: 'test-widget-123' });
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      const longValue = 'a'.repeat(1001);
+      await expect(
+        instance.submit({
+          message: 'Test feedback',
+          metadata: {
+            page_url: 'https://example.com',
+            custom_field: longValue,
+          } as any,
+        })
+      ).rejects.toThrow('Metadata field "custom_field" exceeds maximum length of 1000 characters');
+    });
   });
 
   describe('destroy()', () => {
@@ -362,6 +483,281 @@ describe('FeedValue', () => {
       // DOM elements should be removed
       expect(document.querySelector('.fv-widget-trigger')).toBeNull();
       expect(document.querySelector('.fv-widget-modal')).toBeNull();
+    });
+  });
+
+  describe('initialization failure', () => {
+    it('should set error state when initialization fails', async () => {
+      mockFetch.mockRejectedValueOnce(new Error('API unavailable'));
+      const errorCallback = vi.fn();
+
+      const instance = FeedValue.init({ widgetId: 'test-widget-fail' });
+      instance.on('error', errorCallback);
+
+      // Wait for async init to complete
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      const state = instance.getSnapshot();
+      expect(state.error).toBeInstanceOf(Error);
+      expect(state.error?.message).toContain('API unavailable');
+      expect(state.isReady).toBe(false);
+      expect(errorCallback).toHaveBeenCalled();
+
+      instance.destroy();
+    });
+
+    it('should handle 404 for invalid widget ID', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 404,
+        json: () => Promise.resolve({ detail: 'Widget not found' }),
+      });
+
+      const instance = FeedValue.init({ widgetId: 'invalid-widget' });
+
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      const state = instance.getSnapshot();
+      expect(state.error?.message).toContain('Widget not found');
+      expect(state.isReady).toBe(false);
+
+      instance.destroy();
+    });
+
+    it('should handle destroy() called multiple times', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({
+          widget_id: 'test-widget-multi-destroy',
+          name: 'Test',
+          config: {},
+          styling: {},
+          submission_token: 'token',
+          token_expires_at: Math.floor(Date.now() / 1000) + 3600,
+        }),
+      });
+
+      const instance = FeedValue.init({ widgetId: 'test-widget-multi-destroy' });
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      expect(() => {
+        instance.destroy();
+        instance.destroy();
+      }).not.toThrow();
+
+      expect(FeedValue.getInstance('test-widget-multi-destroy')).toBeUndefined();
+    });
+
+    it('should handle operations after destroy gracefully', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({
+          widget_id: 'test-widget-post-destroy',
+          name: 'Test',
+          config: {},
+          styling: {},
+          submission_token: 'token',
+          token_expires_at: Math.floor(Date.now() / 1000) + 3600,
+        }),
+      });
+
+      const instance = FeedValue.init({ widgetId: 'test-widget-post-destroy' });
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      instance.destroy();
+
+      // These should not throw
+      expect(() => instance.open()).not.toThrow();
+      expect(() => instance.close()).not.toThrow();
+    });
+  });
+
+  describe('CSS sanitization', () => {
+    it('should inject safe customCSS', async () => {
+      const safeCSS = '.fv-widget-trigger { font-size: 16px; }';
+      const responseWithCSS = {
+        ...mockConfigResponse,
+        styling: {
+          ...mockConfigResponse.styling,
+          customCSS: safeCSS,
+        },
+      };
+
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve(responseWithCSS),
+      });
+
+      const instance = FeedValue.init({ widgetId: 'test-widget-123' });
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      const customStyles = document.getElementById('fv-widget-custom-styles');
+      expect(customStyles).not.toBeNull();
+      expect(customStyles?.textContent).toBe(safeCSS);
+
+      instance.destroy();
+    });
+
+    it('should block customCSS with url() pattern', async () => {
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const unsafeCSS = '.widget { background: url(https://evil.com/track.png); }';
+      const responseWithCSS = {
+        ...mockConfigResponse,
+        styling: {
+          ...mockConfigResponse.styling,
+          customCSS: unsafeCSS,
+        },
+      };
+
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve(responseWithCSS),
+      });
+
+      const instance = FeedValue.init({ widgetId: 'test-widget-123' });
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      const customStyles = document.getElementById('fv-widget-custom-styles');
+      expect(customStyles).toBeNull();
+      expect(warnSpy).toHaveBeenCalledWith('[FeedValue] Blocked potentially unsafe CSS pattern');
+
+      warnSpy.mockRestore();
+      instance.destroy();
+    });
+
+    it('should block customCSS with @import pattern', async () => {
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const unsafeCSS = '@import url("https://evil.com/styles.css");';
+      const responseWithCSS = {
+        ...mockConfigResponse,
+        styling: {
+          ...mockConfigResponse.styling,
+          customCSS: unsafeCSS,
+        },
+      };
+
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve(responseWithCSS),
+      });
+
+      const instance = FeedValue.init({ widgetId: 'test-widget-123' });
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      const customStyles = document.getElementById('fv-widget-custom-styles');
+      expect(customStyles).toBeNull();
+      expect(warnSpy).toHaveBeenCalledWith('[FeedValue] Blocked potentially unsafe CSS pattern');
+
+      warnSpy.mockRestore();
+      instance.destroy();
+    });
+
+    it('should block customCSS with javascript: URL', async () => {
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const unsafeCSS = '.widget { content: "javascript:alert(1)"; }';
+      const responseWithCSS = {
+        ...mockConfigResponse,
+        styling: {
+          ...mockConfigResponse.styling,
+          customCSS: unsafeCSS,
+        },
+      };
+
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve(responseWithCSS),
+      });
+
+      const instance = FeedValue.init({ widgetId: 'test-widget-123' });
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      const customStyles = document.getElementById('fv-widget-custom-styles');
+      expect(customStyles).toBeNull();
+      expect(warnSpy).toHaveBeenCalledWith('[FeedValue] Blocked potentially unsafe CSS pattern');
+
+      warnSpy.mockRestore();
+      instance.destroy();
+    });
+
+    it('should block customCSS with expression() (IE)', async () => {
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const unsafeCSS = '.widget { width: expression(alert("xss")); }';
+      const responseWithCSS = {
+        ...mockConfigResponse,
+        styling: {
+          ...mockConfigResponse.styling,
+          customCSS: unsafeCSS,
+        },
+      };
+
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve(responseWithCSS),
+      });
+
+      const instance = FeedValue.init({ widgetId: 'test-widget-123' });
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      const customStyles = document.getElementById('fv-widget-custom-styles');
+      expect(customStyles).toBeNull();
+      expect(warnSpy).toHaveBeenCalledWith('[FeedValue] Blocked potentially unsafe CSS pattern');
+
+      warnSpy.mockRestore();
+      instance.destroy();
+    });
+
+    it('should block customCSS with behavior: (IE)', async () => {
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const unsafeCSS = '.widget { behavior: url(malicious.htc); }';
+      const responseWithCSS = {
+        ...mockConfigResponse,
+        styling: {
+          ...mockConfigResponse.styling,
+          customCSS: unsafeCSS,
+        },
+      };
+
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve(responseWithCSS),
+      });
+
+      const instance = FeedValue.init({ widgetId: 'test-widget-123' });
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      const customStyles = document.getElementById('fv-widget-custom-styles');
+      expect(customStyles).toBeNull();
+      expect(warnSpy).toHaveBeenCalledWith('[FeedValue] Blocked potentially unsafe CSS pattern');
+
+      warnSpy.mockRestore();
+      instance.destroy();
+    });
+
+    it('should block customCSS with -moz-binding (Firefox XBL)', async () => {
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const unsafeCSS = '.widget { -moz-binding: url("chrome://xbl/binding.xml"); }';
+      const responseWithCSS = {
+        ...mockConfigResponse,
+        styling: {
+          ...mockConfigResponse.styling,
+          customCSS: unsafeCSS,
+        },
+      };
+
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve(responseWithCSS),
+      });
+
+      const instance = FeedValue.init({ widgetId: 'test-widget-123' });
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      const customStyles = document.getElementById('fv-widget-custom-styles');
+      expect(customStyles).toBeNull();
+      expect(warnSpy).toHaveBeenCalledWith('[FeedValue] Blocked potentially unsafe CSS pattern');
+
+      warnSpy.mockRestore();
+      instance.destroy();
     });
   });
 });

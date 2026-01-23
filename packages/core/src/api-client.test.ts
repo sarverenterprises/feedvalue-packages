@@ -100,6 +100,76 @@ describe('ApiClient', () => {
     });
   });
 
+  describe('widget ID validation', () => {
+    it('should reject empty widget ID', async () => {
+      await expect(client.fetchConfig('')).rejects.toThrow('Widget ID is required');
+    });
+
+    it('should reject null/undefined widget ID', async () => {
+      await expect(client.fetchConfig(null as unknown as string)).rejects.toThrow('Widget ID is required');
+      await expect(client.fetchConfig(undefined as unknown as string)).rejects.toThrow('Widget ID is required');
+    });
+
+    it('should reject widget ID with path traversal characters', async () => {
+      await expect(client.fetchConfig('../admin/config')).rejects.toThrow(
+        'Invalid widget ID format: only alphanumeric characters, underscores, and hyphens are allowed'
+      );
+      await expect(client.fetchConfig('widget/../../etc/passwd')).rejects.toThrow(
+        'Invalid widget ID format: only alphanumeric characters, underscores, and hyphens are allowed'
+      );
+    });
+
+    it('should reject widget ID with special characters', async () => {
+      await expect(client.fetchConfig('widget<script>')).rejects.toThrow(
+        'Invalid widget ID format: only alphanumeric characters, underscores, and hyphens are allowed'
+      );
+      await expect(client.fetchConfig('widget;drop table')).rejects.toThrow(
+        'Invalid widget ID format: only alphanumeric characters, underscores, and hyphens are allowed'
+      );
+      await expect(client.fetchConfig('widget%00')).rejects.toThrow(
+        'Invalid widget ID format: only alphanumeric characters, underscores, and hyphens are allowed'
+      );
+    });
+
+    it('should reject widget ID exceeding max length', async () => {
+      const longId = 'a'.repeat(65);
+      await expect(client.fetchConfig(longId)).rejects.toThrow(
+        'Widget ID exceeds maximum length of 64 characters'
+      );
+    });
+
+    it('should accept valid widget IDs', async () => {
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve(mockConfigResponse),
+      });
+
+      // Valid formats: alphanumeric, underscores, hyphens
+      await expect(client.fetchConfig('widget-123')).resolves.toBeDefined();
+      client.clearCache();
+      await expect(client.fetchConfig('widget_abc_123')).resolves.toBeDefined();
+      client.clearCache();
+      await expect(client.fetchConfig('Widget123')).resolves.toBeDefined();
+      client.clearCache();
+      await expect(client.fetchConfig('a'.repeat(64))).resolves.toBeDefined();
+    });
+
+    it('should validate widget ID in submitFeedback', async () => {
+      // Pre-fetch config to get token
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(mockConfigResponse),
+      });
+      await client.fetchConfig('valid-widget');
+
+      await expect(
+        client.submitFeedback('../malicious', { message: 'test' })
+      ).rejects.toThrow(
+        'Invalid widget ID format: only alphanumeric characters, underscores, and hyphens are allowed'
+      );
+    });
+  });
+
   describe('fetchConfig()', () => {
     it('should fetch widget config successfully', async () => {
       mockFetch.mockResolvedValueOnce({
@@ -272,6 +342,44 @@ describe('ApiClient', () => {
       await expect(
         client.submitFeedback('test-widget', { message: 'Test' })
       ).rejects.toThrow('Submission blocked');
+    });
+  });
+
+  describe('network error handling', () => {
+    it('should handle network failure (fetch throws TypeError)', async () => {
+      mockFetch.mockRejectedValueOnce(new TypeError('Failed to fetch'));
+
+      await expect(client.fetchConfig('test-widget')).rejects.toThrow('Failed to fetch');
+    });
+
+    it('should handle timeout/abort errors', async () => {
+      mockFetch.mockRejectedValueOnce(new DOMException('The operation was aborted', 'AbortError'));
+
+      await expect(client.fetchConfig('test-widget')).rejects.toThrow('The operation was aborted');
+    });
+
+    it('should handle network errors in submitFeedback', async () => {
+      // First get a valid config
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({
+          widget_id: 'test-widget',
+          name: 'Test',
+          config: {},
+          styling: {},
+          submission_token: 'token-123',
+          token_expires_at: Math.floor(Date.now() / 1000) + 3600,
+        }),
+      });
+
+      await client.fetchConfig('test-widget');
+
+      // Then network fails on submit
+      mockFetch.mockRejectedValueOnce(new TypeError('Network request failed'));
+
+      await expect(
+        client.submitFeedback('test-widget', { message: 'Test feedback' })
+      ).rejects.toThrow('Network request failed');
     });
   });
 

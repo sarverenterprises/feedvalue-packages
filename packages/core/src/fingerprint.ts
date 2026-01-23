@@ -1,194 +1,96 @@
 /**
- * @feedvalue/core - Client Fingerprint
+ * Simple fingerprint generation for anti-abuse protection.
+ * Uses a session-based UUID stored in sessionStorage.
  *
- * Generates a semi-unique fingerprint for anti-abuse protection.
- * Used to identify clients without requiring authentication.
- *
- * NOTE: This is NOT for tracking users. It's used to:
- * 1. Validate submission tokens (tied to fingerprint)
- * 2. Rate limit abusive clients
- * 3. Detect automated submissions
+ * This replaces the previous complex fingerprinting system (canvas, WebGL, audio)
+ * which was overkill for an MVP feedback widget and raised privacy concerns.
  */
 
 /**
- * Generate a client fingerprint using available browser signals
- *
- * The fingerprint is a hash of browser characteristics that:
- * - Is consistent across page loads (same browser/device)
- * - Changes if browser/device changes
- * - Is NOT personally identifiable
- *
- * @returns SHA-256 hash of fingerprint data
+ * Storage key for the fingerprint
  */
-export async function generateFingerprint(): Promise<string> {
-  // Collect fingerprint components
-  const components: string[] = [];
+const FINGERPRINT_STORAGE_KEY = 'fv_fingerprint';
 
-  // Screen dimensions
-  if (typeof screen !== 'undefined') {
-    components.push(`screen:${screen.width}x${screen.height}x${screen.colorDepth}`);
+/**
+ * Generate a UUID v4.
+ * Uses crypto.randomUUID() if available, otherwise falls back to a manual implementation.
+ */
+function generateUUID(): string {
+  // Use native crypto.randomUUID if available
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
   }
 
-  // Timezone
-  if (typeof Intl !== 'undefined') {
+  // Fallback: manual UUID v4 generation using crypto.getRandomValues
+  if (typeof crypto !== 'undefined' && typeof crypto.getRandomValues === 'function') {
+    const bytes = new Uint8Array(16);
+    crypto.getRandomValues(bytes);
+
+    // Set version (4) and variant (RFC 4122)
+    // Using non-null assertions since we know the array has 16 elements
+    bytes[6] = (bytes[6]! & 0x0f) | 0x40;
+    bytes[8] = (bytes[8]! & 0x3f) | 0x80;
+
+    const hex = Array.from(bytes)
+      .map((b) => b.toString(16).padStart(2, '0'))
+      .join('');
+
+    return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+  }
+
+  // Last resort fallback using Math.random (less secure but functional)
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    const v = c === 'x' ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+}
+
+/**
+ * Generate or retrieve a session fingerprint.
+ *
+ * The fingerprint is:
+ * - Generated once per browser session using crypto.randomUUID()
+ * - Stored in sessionStorage for consistency within a session
+ * - Automatically cleared when the browser tab/window is closed
+ *
+ * @returns A unique fingerprint string for the current session
+ */
+export function generateFingerprint(): string {
+  // Check for SSR environment
+  if (typeof window === 'undefined' || typeof sessionStorage === 'undefined') {
+    return generateUUID();
+  }
+
+  // Try to get existing fingerprint from session
+  const stored = sessionStorage.getItem(FINGERPRINT_STORAGE_KEY);
+  if (stored) {
+    return stored;
+  }
+
+  // Generate new fingerprint
+  const fingerprint = generateUUID();
+
+  try {
+    sessionStorage.setItem(FINGERPRINT_STORAGE_KEY, fingerprint);
+  } catch {
+    // sessionStorage may be unavailable (private browsing, quota exceeded)
+    // Fall through and return the generated fingerprint anyway
+  }
+
+  return fingerprint;
+}
+
+/**
+ * Clear the stored fingerprint.
+ * Useful for testing or when user requests data reset.
+ */
+export function clearFingerprint(): void {
+  if (typeof sessionStorage !== 'undefined') {
     try {
-      components.push(`tz:${Intl.DateTimeFormat().resolvedOptions().timeZone}`);
+      sessionStorage.removeItem(FINGERPRINT_STORAGE_KEY);
     } catch {
-      // Intl not fully supported
+      // Ignore errors
     }
   }
-
-  // Language
-  if (typeof navigator !== 'undefined') {
-    components.push(`lang:${navigator.language || ''}`);
-    components.push(`langs:${(navigator.languages || []).join(',')}`);
-    components.push(`platform:${navigator.platform || ''}`);
-    components.push(`cores:${navigator.hardwareConcurrency || 0}`);
-    components.push(`touch:${navigator.maxTouchPoints || 0}`);
-  }
-
-  // Date offset (handles DST)
-  const date = new Date();
-  components.push(`offset:${date.getTimezoneOffset()}`);
-
-  // Canvas fingerprint (optional, adds uniqueness)
-  const canvasHash = await getCanvasFingerprint();
-  if (canvasHash) {
-    components.push(`canvas:${canvasHash}`);
-  }
-
-  // WebGL renderer (optional)
-  const webglRenderer = getWebGLRenderer();
-  if (webglRenderer) {
-    components.push(`webgl:${webglRenderer}`);
-  }
-
-  // Audio context (optional)
-  const audioHash = await getAudioFingerprint();
-  if (audioHash) {
-    components.push(`audio:${audioHash}`);
-  }
-
-  // Hash all components
-  const fingerprintString = components.join('|');
-  return hashString(fingerprintString);
-}
-
-/**
- * Get canvas fingerprint
- */
-async function getCanvasFingerprint(): Promise<string | null> {
-  if (typeof document === 'undefined') return null;
-
-  try {
-    const canvas = document.createElement('canvas');
-    canvas.width = 200;
-    canvas.height = 50;
-
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return null;
-
-    // Draw text with various styles
-    ctx.textBaseline = 'top';
-    ctx.font = '14px Arial';
-    ctx.fillStyle = '#f60';
-    ctx.fillRect(125, 1, 62, 20);
-    ctx.fillStyle = '#069';
-    ctx.fillText('FeedValue', 2, 15);
-    ctx.fillStyle = 'rgba(102, 204, 0, 0.7)';
-    ctx.fillText('Fingerprint', 4, 17);
-
-    // Get data URL and hash it
-    const dataUrl = canvas.toDataURL();
-    return hashString(dataUrl.slice(-50)); // Only hash last part
-  } catch {
-    return null;
-  }
-}
-
-/**
- * Get WebGL renderer string
- */
-function getWebGLRenderer(): string | null {
-  if (typeof document === 'undefined') return null;
-
-  try {
-    const canvas = document.createElement('canvas');
-    const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
-    if (!gl) return null;
-
-    const glContext = gl as WebGLRenderingContext;
-    const debugInfo = glContext.getExtension('WEBGL_debug_renderer_info');
-    if (!debugInfo) return null;
-
-    const renderer = glContext.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL);
-    return typeof renderer === 'string' ? renderer.slice(0, 100) : null;
-  } catch {
-    return null;
-  }
-}
-
-/**
- * Get audio context fingerprint
- */
-async function getAudioFingerprint(): Promise<string | null> {
-  if (typeof window === 'undefined' || !window.AudioContext) return null;
-
-  try {
-    const audioContext = new AudioContext();
-    const oscillator = audioContext.createOscillator();
-    const analyser = audioContext.createAnalyser();
-    const gain = audioContext.createGain();
-    const processor = audioContext.createScriptProcessor(4096, 1, 1);
-
-    oscillator.type = 'triangle';
-    oscillator.frequency.setValueAtTime(10000, audioContext.currentTime);
-
-    gain.gain.setValueAtTime(0, audioContext.currentTime);
-    oscillator.connect(analyser);
-    analyser.connect(processor);
-    processor.connect(gain);
-    gain.connect(audioContext.destination);
-
-    oscillator.start(0);
-
-    // Get frequency data
-    const frequencyData = new Uint8Array(analyser.frequencyBinCount);
-    analyser.getByteFrequencyData(frequencyData);
-
-    // Cleanup
-    oscillator.stop();
-    audioContext.close();
-
-    // Hash first 10 frequency values
-    return hashString(frequencyData.slice(0, 10).join(','));
-  } catch {
-    return null;
-  }
-}
-
-/**
- * Hash a string using SHA-256
- * Falls back to simple hash if crypto not available
- */
-async function hashString(str: string): Promise<string> {
-  // Try Web Crypto API first
-  if (typeof crypto !== 'undefined' && crypto.subtle) {
-    try {
-      const encoder = new TextEncoder();
-      const data = encoder.encode(str);
-      const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-      const hashArray = Array.from(new Uint8Array(hashBuffer));
-      return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
-    } catch {
-      // Fall through to fallback
-    }
-  }
-
-  // Fallback: simple hash (djb2)
-  let hash = 5381;
-  for (let i = 0; i < str.length; i++) {
-    hash = (hash * 33) ^ str.charCodeAt(i);
-  }
-  return Math.abs(hash).toString(16).padStart(8, '0');
 }

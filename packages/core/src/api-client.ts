@@ -12,6 +12,12 @@ import type { ConfigResponse, FeedbackResponse, FeedbackData } from './types';
  */
 export const DEFAULT_API_BASE_URL = 'https://api.feedvalue.com';
 
+/** Buffer time before token is considered expired (seconds) */
+const TOKEN_EXPIRY_BUFFER_SECONDS = 30;
+
+/** How long to cache widget config (milliseconds) */
+const CONFIG_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+
 /**
  * Cache entry with TTL
  */
@@ -30,9 +36,8 @@ export class ApiClient {
   // Request deduplication
   private pendingRequests = new Map<string, Promise<unknown>>();
 
-  // Config cache (5 minute TTL)
+  // Config cache
   private configCache = new Map<string, CacheEntry<ConfigResponse>>();
-  private readonly CONFIG_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
   // Anti-abuse tokens
   private submissionToken: string | null = null;
@@ -42,6 +47,22 @@ export class ApiClient {
   constructor(baseUrl: string = DEFAULT_API_BASE_URL, debug = false) {
     this.baseUrl = baseUrl.replace(/\/$/, ''); // Remove trailing slash
     this.debug = debug;
+  }
+
+  /**
+   * Validate widget ID to prevent path injection attacks
+   * @throws Error if widget ID is invalid
+   */
+  private validateWidgetId(widgetId: string): void {
+    if (!widgetId || typeof widgetId !== 'string') {
+      throw new Error('Widget ID is required');
+    }
+    if (!/^[a-zA-Z0-9_-]+$/.test(widgetId)) {
+      throw new Error('Invalid widget ID format: only alphanumeric characters, underscores, and hyphens are allowed');
+    }
+    if (widgetId.length > 64) {
+      throw new Error('Widget ID exceeds maximum length of 64 characters');
+    }
   }
 
   /**
@@ -65,8 +86,8 @@ export class ApiClient {
     if (!this.submissionToken || !this.tokenExpiresAt) {
       return false;
     }
-    // Add 30 second buffer
-    return Date.now() / 1000 < this.tokenExpiresAt - 30;
+    // Add buffer before expiry
+    return Date.now() / 1000 < this.tokenExpiresAt - TOKEN_EXPIRY_BUFFER_SECONDS;
   }
 
   /**
@@ -74,6 +95,7 @@ export class ApiClient {
    * Uses caching and request deduplication
    */
   async fetchConfig(widgetId: string): Promise<ConfigResponse> {
+    this.validateWidgetId(widgetId);
     const cacheKey = `config:${widgetId}`;
 
     // Check cache first
@@ -140,7 +162,7 @@ export class ApiClient {
     const cacheKey = `config:${widgetId}`;
     this.configCache.set(cacheKey, {
       data,
-      expiresAt: Date.now() + this.CONFIG_CACHE_TTL,
+      expiresAt: Date.now() + CONFIG_CACHE_TTL_MS,
     });
 
     this.log('Config fetched', { widgetId });
@@ -154,6 +176,7 @@ export class ApiClient {
     widgetId: string,
     feedback: FeedbackData
   ): Promise<FeedbackResponse> {
+    this.validateWidgetId(widgetId);
     const url = `${this.baseUrl}/api/v1/widgets/${widgetId}/feedback`;
 
     // Refresh token if needed
