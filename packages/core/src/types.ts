@@ -55,7 +55,7 @@ export interface WidgetStyling {
   textColor: string;
   buttonTextColor: string;
   borderRadius: string;
-  customCSS?: string;
+  customCSS?: string | undefined;
 }
 
 /**
@@ -69,7 +69,7 @@ export interface WidgetUIConfig {
   submitButtonText: string;
   thankYouMessage: string;
   showBranding: boolean;
-  customFields?: CustomField[];
+  customFields?: CustomField[] | undefined;
 }
 
 /**
@@ -94,11 +94,11 @@ export interface FeedValueOptions {
   /** Widget ID from FeedValue dashboard */
   widgetId: string;
   /** API base URL (defaults to production) */
-  apiBaseUrl?: string;
+  apiBaseUrl?: string | undefined;
   /** Enable debug logging */
-  debug?: boolean;
+  debug?: boolean | undefined;
   /** Initial configuration overrides */
-  config?: Partial<FeedValueConfig>;
+  config?: Partial<FeedValueConfig> | undefined;
 }
 
 /**
@@ -149,11 +149,11 @@ export interface FeedbackData {
   /** Feedback message content */
   message: string;
   /** Sentiment rating (from emoji field) */
-  sentiment?: EmojiSentiment;
+  sentiment?: EmojiSentiment | undefined;
   /** Custom field values */
-  customFieldValues?: Record<string, string>;
+  customFieldValues?: Record<string, string> | undefined;
   /** Page metadata */
-  metadata?: FeedbackMetadata;
+  metadata?: FeedbackMetadata | undefined;
 }
 
 /**
@@ -163,9 +163,9 @@ export interface FeedbackMetadata {
   /** Current page URL */
   page_url: string;
   /** Referrer URL */
-  referrer?: string;
+  referrer?: string | undefined;
   /** User agent string */
-  user_agent?: string;
+  user_agent?: string | undefined;
 }
 
 // ============================================================================

@@ -1,0 +1,82 @@
+{
+  "name": "@feedvalue/react",
+  "version": "0.1.0",
+  "description": "FeedValue React SDK - Provider, Hooks, and Components for React 18+",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      }
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "sideEffects": false,
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "lint": "eslint src --ext .ts,.tsx",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist"
+  },
+  "peerDependencies": {
+    "react": ">=18.0.0",
+    "react-dom": ">=18.0.0"
+  },
+  "dependencies": {
+    "@feedvalue/core": "workspace:^"
+  },
+  "devDependencies": {
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.1.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@vitest/coverage-v8": "^2.1.0",
+    "eslint": "^9.17.0",
+    "happy-dom": "^15.11.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "tsup": "^8.3.0",
+    "typescript": "^5.7.0",
+    "vitest": "^2.1.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/sarverenterprises/feedvalue-packages.git",
+    "directory": "packages/react"
+  },
+  "homepage": "https://feedvalue.com",
+  "bugs": {
+    "url": "https://github.com/sarverenterprises/feedvalue-packages/issues"
+  },
+  "license": "MIT",
+  "author": "Sarver Enterprises",
+  "keywords": [
+    "feedvalue",
+    "feedback",
+    "widget",
+    "react",
+    "hooks",
+    "nextjs"
+  ],
+  "engines": {
+    "node": ">=18"
+  }
+}

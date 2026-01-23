@@ -30,8 +30,8 @@ function App() {
 }
 
 function FeedbackButton() {
-  const { open } = useFeedValue();
-  return <button onClick={open}>Give Feedback</button>;
+  const { open, isReady } = useFeedValue();
+  return <button onClick={open} disabled={!isReady}>Give Feedback</button>;
 }
 ```
 
@@ -41,15 +41,22 @@ function FeedbackButton() {
 npm install @feedvalue/vue
 ```
 
+```typescript
+// main.ts - Install the plugin
+import { createFeedValue } from '@feedvalue/vue';
+
+app.use(createFeedValue({ widgetId: 'your-widget-id' }));
+```
+
 ```vue
 <script setup>
 import { useFeedValue } from '@feedvalue/vue';
 
-const { open } = useFeedValue({ widgetId: 'your-widget-id' });
+const { open, isReady } = useFeedValue();
 </script>
 
 <template>
-  <button @click="open">Give Feedback</button>
+  <button @click="open" :disabled="!isReady">Give Feedback</button>
 </template>
 ```
 
@@ -62,12 +69,12 @@ npm install @feedvalue/core
 ```javascript
 import { FeedValue } from '@feedvalue/core';
 
-const widget = new FeedValue({ widgetId: 'your-widget-id' });
-widget.init();
+// Initialize (auto-inits and renders)
+const feedvalue = FeedValue.init({ widgetId: 'your-widget-id' });
 
 // Open programmatically
 document.getElementById('feedback-btn').addEventListener('click', () => {
-  widget.open();
+  feedvalue.open();
 });
 ```
 

@@ -81,10 +81,10 @@ export class FeedValue implements FeedValueInstance {
   private stateSubscribers = new Set<() => void>();
   private stateSnapshot: FeedValueState;
 
-  // User data
-  private userData: UserData = {};
-  private userId: string | null = null;
-  private userTraits: UserTraits = {};
+  // User data (stored for future API submissions)
+  private _userData: UserData = {};
+  private _userId: string | null = null;
+  private _userTraits: UserTraits = {};
 
   // DOM elements (for vanilla usage)
   private triggerButton: HTMLElement | null = null;
@@ -316,23 +316,34 @@ export class FeedValue implements FeedValueInstance {
   // ===========================================================================
 
   setData(data: Partial<UserData>): void {
-    this.userData = { ...this.userData, ...data };
+    this._userData = { ...this._userData, ...data };
     this.log('User data set', data);
   }
 
   identify(userId: string, traits?: UserTraits): void {
-    this.userId = userId;
+    this._userId = userId;
     if (traits) {
-      this.userTraits = { ...this.userTraits, ...traits };
+      this._userTraits = { ...this._userTraits, ...traits };
     }
     this.log('User identified', { userId, traits });
   }
 
   reset(): void {
-    this.userData = {};
-    this.userId = null;
-    this.userTraits = {};
+    this._userData = {};
+    this._userId = null;
+    this._userTraits = {};
     this.log('User data reset');
+  }
+
+  /**
+   * Get current user data (for debugging/testing)
+   */
+  getUserData(): { userId: string | null; data: UserData; traits: UserTraits } {
+    return {
+      userId: this._userId,
+      data: { ...this._userData },
+      traits: { ...this._userTraits },
+    };
   }
 
   // ===========================================================================
@@ -695,7 +706,7 @@ export class FeedValue implements FeedValueInstance {
   private renderModal(): void {
     if (!this.widgetConfig) return;
 
-    const { config, styling } = this.widgetConfig;
+    const { config } = this.widgetConfig;
 
     // Overlay
     this.overlay = document.createElement('div');
