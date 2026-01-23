@@ -1,0 +1,70 @@
+{
+  "name": "@feedvalue/core",
+  "version": "0.1.0",
+  "description": "FeedValue Core SDK - TypeScript types, initialization, and vanilla JavaScript API",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      }
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "sideEffects": false,
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "lint": "eslint src --ext .ts",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "@vitest/coverage-v8": "^2.1.0",
+    "eslint": "^9.17.0",
+    "happy-dom": "^15.11.0",
+    "tsup": "^8.3.0",
+    "typescript": "^5.7.0",
+    "vitest": "^2.1.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/sarverenterprises/feedvalue-packages.git",
+    "directory": "packages/core"
+  },
+  "homepage": "https://feedvalue.com",
+  "bugs": {
+    "url": "https://github.com/sarverenterprises/feedvalue-packages/issues"
+  },
+  "license": "MIT",
+  "author": "Sarver Enterprises",
+  "keywords": [
+    "feedvalue",
+    "feedback",
+    "widget",
+    "sdk",
+    "customer-feedback",
+    "user-feedback"
+  ],
+  "engines": {
+    "node": ">=18"
+  }
+}
