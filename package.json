@@ -1,0 +1,29 @@
+{
+  "name": "feedvalue-packages",
+  "private": true,
+  "description": "Official FeedValue SDK packages for React, Vue, and vanilla JavaScript",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/sarverenterprises/feedvalue-packages.git"
+  },
+  "author": "Sarver Enterprises",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18"
+  },
+  "packageManager": "pnpm@9.15.0",
+  "scripts": {
+    "build": "pnpm -r build",
+    "test": "pnpm -r test",
+    "lint": "pnpm -r lint",
+    "typecheck": "pnpm -r typecheck",
+    "clean": "pnpm -r clean",
+    "changeset": "changeset",
+    "version": "changeset version",
+    "release": "pnpm build && changeset publish"
+  },
+  "devDependencies": {
+    "@changesets/cli": "^2.27.0",
+    "typescript": "^5.7.0"
+  }
+}
