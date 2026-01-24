@@ -7,8 +7,6 @@ import styles from './headless-demo.module.css';
 export function HeadlessDemo() {
   const {
     isReady,
-    open,
-    close,
     submit,
     isSubmitting,
     identify,
@@ -34,12 +32,10 @@ export function HeadlessDemo() {
 
   const handleOpen = () => {
     setShowModal(true);
-    open();
   };
 
   const handleClose = () => {
     setShowModal(false);
-    close();
     setMessage('');
   };
 

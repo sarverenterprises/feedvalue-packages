@@ -4,8 +4,6 @@ import { useFeedValue } from '@feedvalue/vue';
 
 const {
   isReady,
-  open,
-  close,
   submit,
   isSubmitting,
   identify,
@@ -31,12 +29,10 @@ onMounted(() => {
 
 function handleOpen() {
   showModal.value = true;
-  open();
 }
 
 function handleClose() {
   showModal.value = false;
-  close();
   message.value = '';
 }
 
