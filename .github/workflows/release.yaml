@@ -33,7 +33,6 @@ jobs:
         with:
           node-version: 20
           cache: 'pnpm'
-          registry-url: 'https://registry.npmjs.org'
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -48,11 +47,10 @@ jobs:
         id: changesets
         uses: changesets/action@v1
         with:
-          publish: pnpm release
+          publish: pnpm release:oidc
           version: pnpm version
           title: 'chore: version packages'
           commit: 'chore: version packages'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # OIDC trusted publishing - no NPM_TOKEN needed
           NPM_CONFIG_PROVENANCE: true

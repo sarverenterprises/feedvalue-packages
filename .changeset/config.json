@@ -5,7 +5,7 @@
   "fixed": [],
   "linked": [["@feedvalue/core", "@feedvalue/react", "@feedvalue/vue"]],
   "access": "public",
-  "baseBranch": "master",
+  "baseBranch": "main",
   "updateInternalDependencies": "patch",
   "ignore": []
 }

@@ -21,7 +21,8 @@
     "clean": "pnpm -r clean",
     "changeset": "changeset",
     "version": "changeset version",
-    "release": "pnpm build && changeset publish"
+    "release": "pnpm build && changeset publish",
+    "release:oidc": "pnpm build && pnpm -r publish --access public --no-git-checks --provenance"
   },
   "devDependencies": {
     "@changesets/cli": "^2.27.0",
