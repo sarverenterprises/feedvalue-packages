@@ -35,7 +35,29 @@ feedvalue.open();
 feedvalue.close();
 ```
 
+### Headless Mode
+
+For complete UI control, initialize in headless mode. The SDK fetches config and provides all API methods but renders no DOM elements:
+
+```typescript
+const feedvalue = FeedValue.init({
+  widgetId: 'your-widget-id',
+  headless: true, // No trigger button or modal rendered
+});
+
+// Wait until ready
+await feedvalue.waitUntilReady();
+
+// Build your own UI, use SDK for submission
+await feedvalue.submit({
+  message: 'User feedback here',
+  sentiment: 'satisfied',
+});
+```
+
 ### User Identification
+
+User data is automatically included with feedback submissions:
 
 ```typescript
 // Identify the current user
@@ -61,11 +83,23 @@ feedvalue.reset();
 // Submit feedback programmatically
 await feedvalue.submit({
   message: 'Great product!',
-  sentiment: '😊',
+  sentiment: 'excited', // 'angry' | 'disappointed' | 'satisfied' | 'excited'
   metadata: {
     page_url: window.location.href,
-    custom_field: 'value',
   },
+});
+```
+
+### Waiting for Ready State
+
+```typescript
+// Wait until widget is fully initialized
+await feedvalue.waitUntilReady();
+console.log('Widget ready, config loaded');
+
+// Or use the event
+feedvalue.on('ready', () => {
+  console.log('Widget is ready');
 });
 ```
 
@@ -93,6 +127,11 @@ feedvalue.on('error', (error) => {
   console.error('Widget error:', error);
 });
 
+// Subscribe to a single event emission
+feedvalue.once('ready', () => {
+  console.log('First ready event only');
+});
+
 // Unsubscribe from events
 feedvalue.off('open', handleOpen);
 ```
@@ -111,17 +150,32 @@ const state = feedvalue.getSnapshot();
 // { isReady, isOpen, isVisible, error, isSubmitting }
 ```
 
+### Configuration Updates
+
+```typescript
+// Update runtime configuration
+feedvalue.setConfig({
+  theme: 'dark',
+  debug: true,
+});
+
+// Get current configuration
+const config = feedvalue.getConfig();
+```
+
 ## API Reference
 
 ### `FeedValue.init(options)`
 
 Initialize a FeedValue instance.
 
-| Option | Type | Required | Description |
-|--------|------|----------|-------------|
-| `widgetId` | `string` | Yes | Widget ID from FeedValue dashboard |
-| `apiBaseUrl` | `string` | No | Custom API URL (for self-hosted) |
-| `config` | `Partial<FeedValueConfig>` | No | Configuration overrides |
+| Option | Type | Required | Default | Description |
+|--------|------|----------|---------|-------------|
+| `widgetId` | `string` | Yes | - | Widget ID from FeedValue dashboard |
+| `apiBaseUrl` | `string` | No | Production URL | Custom API URL (for self-hosted) |
+| `config` | `Partial<FeedValueConfig>` | No | - | Configuration overrides |
+| `headless` | `boolean` | No | `false` | Disable all DOM rendering |
+| `debug` | `boolean` | No | `false` | Enable debug logging |
 
 ### Instance Methods
 
@@ -132,23 +186,41 @@ Initialize a FeedValue instance.
 | `toggle()` | Toggle the modal open/closed |
 | `show()` | Show the trigger button |
 | `hide()` | Hide the trigger button |
+| `isOpen()` | Check if modal is open |
+| `isVisible()` | Check if trigger is visible |
+| `isReady()` | Check if widget is ready |
+| `isHeadless()` | Check if running in headless mode |
 | `submit(feedback)` | Submit feedback programmatically |
 | `identify(userId, traits?)` | Identify the current user |
 | `setData(data)` | Set additional user data |
 | `reset()` | Reset user data |
 | `on(event, handler)` | Subscribe to events |
+| `once(event, handler)` | Subscribe to single event |
 | `off(event, handler?)` | Unsubscribe from events |
+| `waitUntilReady()` | Promise that resolves when ready |
 | `subscribe(callback)` | Subscribe to state changes |
 | `getSnapshot()` | Get current state |
+| `setConfig(config)` | Update runtime configuration |
 | `getConfig()` | Get current configuration |
 | `destroy()` | Destroy the widget instance |
 
+### Events
+
+| Event | Payload | Description |
+|-------|---------|-------------|
+| `ready` | - | Widget initialized, config loaded |
+| `open` | - | Modal opened |
+| `close` | - | Modal closed |
+| `submit` | `FeedbackData` | Feedback submitted successfully |
+| `error` | `Error` | An error occurred |
+| `stateChange` | `FeedValueState` | Any state change |
+
 ## Framework Packages
 
-For framework-specific integrations:
+For framework-specific integrations with hooks and components:
 
-- **React**: [@feedvalue/react](https://www.npmjs.com/package/@feedvalue/react)
-- **Vue**: [@feedvalue/vue](https://www.npmjs.com/package/@feedvalue/vue)
+- **React/Next.js**: [@feedvalue/react](https://www.npmjs.com/package/@feedvalue/react)
+- **Vue/Nuxt**: [@feedvalue/vue](https://www.npmjs.com/package/@feedvalue/vue)
 
 ## License
 

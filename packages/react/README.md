@@ -1,6 +1,6 @@
 # @feedvalue/react
 
-React SDK for FeedValue feedback widget. Provides Provider, Hooks, and Components for React 18+.
+React SDK for FeedValue feedback widget. Provides Provider and Hooks for React 18+.
 
 ## Installation
 
@@ -55,25 +55,71 @@ export function FeedbackButton() {
 }
 ```
 
-### Using the Widget Component
+### Headless Mode
+
+For complete UI control, use headless mode. The SDK fetches config and provides all API methods but renders no trigger button or modal:
 
 ```tsx
-'use client';
+// app/layout.tsx
+import { FeedValueProvider } from '@feedvalue/react';
 
-import { FeedValueWidget } from '@feedvalue/react';
-
-// Standalone widget (no Provider needed)
-export function FeedbackWidget() {
+export default function RootLayout({ children }) {
   return (
-    <FeedValueWidget
-      widgetId="your-widget-id"
-      onSubmit={(feedback) => console.log('Submitted:', feedback)}
-    />
+    <html>
+      <body>
+        <FeedValueProvider widgetId="your-widget-id" headless>
+          {children}
+        </FeedValueProvider>
+      </body>
+    </html>
   );
 }
 ```
 
-### Programmatic Control
+```tsx
+// components/custom-feedback.tsx
+'use client';
+
+import { useState } from 'react';
+import { useFeedValue } from '@feedvalue/react';
+
+export function CustomFeedback() {
+  const { isReady, isOpen, open, close, submit, isSubmitting, isHeadless } = useFeedValue();
+  const [message, setMessage] = useState('');
+
+  const handleSubmit = async () => {
+    await submit({ message });
+    setMessage('');
+    close();
+  };
+
+  if (!isReady) return null;
+
+  return (
+    <>
+      <button onClick={open}>Feedback</button>
+
+      {isOpen && (
+        <dialog open className="feedback-modal">
+          <textarea
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            placeholder="Your feedback..."
+          />
+          <div>
+            <button onClick={handleSubmit} disabled={isSubmitting}>
+              {isSubmitting ? 'Sending...' : 'Submit'}
+            </button>
+            <button onClick={close}>Cancel</button>
+          </div>
+        </dialog>
+      )}
+    </>
+  );
+}
+```
+
+### Programmatic Submission
 
 ```tsx
 'use client';
@@ -109,6 +155,8 @@ export function FeedbackForm() {
 
 ### User Identification
 
+User data is automatically included with feedback submissions:
+
 ```tsx
 'use client';
 
@@ -141,16 +189,17 @@ export function UserIdentifier({ user }) {
 
 Provider component for FeedValue context.
 
-| Prop | Type | Required | Description |
-|------|------|----------|-------------|
-| `widgetId` | `string` | Yes | Widget ID from FeedValue dashboard |
-| `apiBaseUrl` | `string` | No | Custom API URL (for self-hosted) |
-| `config` | `Partial<FeedValueConfig>` | No | Configuration overrides |
-| `onReady` | `() => void` | No | Called when widget is ready |
-| `onOpen` | `() => void` | No | Called when modal opens |
-| `onClose` | `() => void` | No | Called when modal closes |
-| `onSubmit` | `(feedback: FeedbackData) => void` | No | Called when feedback is submitted |
-| `onError` | `(error: Error) => void` | No | Called on errors |
+| Prop | Type | Required | Default | Description |
+|------|------|----------|---------|-------------|
+| `widgetId` | `string` | Yes | - | Widget ID from FeedValue dashboard |
+| `apiBaseUrl` | `string` | No | Production URL | Custom API URL (for self-hosted) |
+| `config` | `Partial<FeedValueConfig>` | No | - | Configuration overrides |
+| `headless` | `boolean` | No | `false` | Disable all DOM rendering |
+| `onReady` | `() => void` | No | - | Called when widget is ready |
+| `onOpen` | `() => void` | No | - | Called when modal opens |
+| `onClose` | `() => void` | No | - | Called when modal closes |
+| `onSubmit` | `(feedback: FeedbackData) => void` | No | - | Called when feedback is submitted |
+| `onError` | `(error: Error) => void` | No | - | Called on errors |
 
 ### `useFeedValue()`
 
@@ -160,11 +209,13 @@ Returns:
 
 | Property | Type | Description |
 |----------|------|-------------|
+| `instance` | `FeedValue \| null` | Raw FeedValue instance (advanced usage) |
 | `isReady` | `boolean` | Widget is initialized |
 | `isOpen` | `boolean` | Modal is open |
 | `isVisible` | `boolean` | Trigger button is visible |
 | `error` | `Error \| null` | Current error |
 | `isSubmitting` | `boolean` | Submission in progress |
+| `isHeadless` | `boolean` | Running in headless mode |
 | `open` | `() => void` | Open the modal |
 | `close` | `() => void` | Close the modal |
 | `toggle` | `() => void` | Toggle modal |
@@ -178,19 +229,6 @@ Returns:
 ### `useFeedValueOptional()`
 
 Same as `useFeedValue()` but returns `null` if used outside provider instead of throwing.
-
-### `<FeedValueWidget>`
-
-Standalone widget component that doesn't require a provider.
-
-| Prop | Type | Required | Description |
-|------|------|----------|-------------|
-| `widgetId` | `string` | Yes | Widget ID from FeedValue dashboard |
-| `apiBaseUrl` | `string` | No | Custom API URL |
-| `config` | `Partial<FeedValueConfig>` | No | Configuration overrides |
-| `onReady` | `() => void` | No | Ready callback |
-| `onSubmit` | `(feedback) => void` | No | Submit callback |
-| `onError` | `(error) => void` | No | Error callback |
 
 ## Server-Side Rendering
 
@@ -213,6 +251,18 @@ export function FeedbackButton() {
   );
 }
 ```
+
+## Default vs Headless Mode
+
+| Feature | Default Mode | Headless Mode |
+|---------|--------------|---------------|
+| Trigger button | Dashboard-styled | You build it |
+| Modal | Dashboard-styled | You build it |
+| API methods | Available | Available |
+| User tracking | Available | Available |
+| Dashboard config | Fetched | Fetched |
+
+Use `headless={true}` when you want complete control over the UI.
 
 ## Requirements
 

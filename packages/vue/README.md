@@ -50,6 +50,48 @@ const { open, isReady, isOpen } = useFeedValue();
 </template>
 ```
 
+### Headless Mode
+
+For complete UI control, use headless mode. The SDK fetches config and provides all API methods but renders no DOM elements:
+
+```typescript
+// main.ts
+app.use(createFeedValue({
+  widgetId: 'your-widget-id',
+  headless: true, // No trigger button or modal rendered
+}));
+```
+
+```vue
+<script setup>
+import { ref } from 'vue';
+import { useFeedValue } from '@feedvalue/vue';
+
+const { isReady, isOpen, open, close, submit, isSubmitting, isHeadless } = useFeedValue();
+const message = ref('');
+
+async function handleSubmit() {
+  await submit({ message: message.value });
+  message.value = '';
+  close();
+}
+</script>
+
+<template>
+  <button @click="open" :disabled="!isReady">
+    Feedback
+  </button>
+
+  <div v-if="isOpen" class="my-modal">
+    <textarea v-model="message" placeholder="Your feedback..." />
+    <button @click="handleSubmit" :disabled="isSubmitting">
+      {{ isSubmitting ? 'Sending...' : 'Submit' }}
+    </button>
+    <button @click="close">Cancel</button>
+  </div>
+</template>
+```
+
 ### Standalone Usage (No Plugin)
 
 ```vue
@@ -101,6 +143,8 @@ async function handleSubmit() {
 
 ### User Identification
 
+User data is automatically included with feedback submissions:
+
 ```vue
 <script setup>
 import { watch } from 'vue';
@@ -149,11 +193,12 @@ export default {
 
 Creates a Vue plugin for FeedValue.
 
-| Option | Type | Required | Description |
-|--------|------|----------|-------------|
-| `widgetId` | `string` | Yes | Widget ID from FeedValue dashboard |
-| `apiBaseUrl` | `string` | No | Custom API URL (for self-hosted) |
-| `config` | `Partial<FeedValueConfig>` | No | Configuration overrides |
+| Option | Type | Required | Default | Description |
+|--------|------|----------|---------|-------------|
+| `widgetId` | `string` | Yes | - | Widget ID from FeedValue dashboard |
+| `apiBaseUrl` | `string` | No | Production URL | Custom API URL (for self-hosted) |
+| `config` | `Partial<FeedValueConfig>` | No | - | Configuration overrides |
+| `headless` | `boolean` | No | `false` | Disable all DOM rendering |
 
 ### `useFeedValue(widgetId?, config?)`
 
@@ -176,6 +221,7 @@ Composable to access FeedValue functionality.
 | `isVisible` | `Readonly<Ref<boolean>>` | Trigger is visible |
 | `error` | `Readonly<Ref<Error \| null>>` | Current error |
 | `isSubmitting` | `Readonly<Ref<boolean>>` | Submission in progress |
+| `isHeadless` | `Readonly<Ref<boolean>>` | Running in headless mode |
 | `open` | `() => void` | Open modal |
 | `close` | `() => void` | Close modal |
 | `toggle` | `() => void` | Toggle modal |
@@ -216,6 +262,18 @@ export default defineNuxtPlugin((nuxtApp) => {
 });
 ```
 
+For headless mode in Nuxt:
+
+```typescript
+// plugins/feedvalue.client.ts
+export default defineNuxtPlugin((nuxtApp) => {
+  nuxtApp.vueApp.use(createFeedValue({
+    widgetId: 'your-widget-id',
+    headless: true, // Build your own UI
+  }));
+});
+```
+
 The `.client.ts` suffix ensures the plugin only runs on the client side.
 
 ## SSR Support
@@ -238,6 +296,18 @@ const { isReady } = useFeedValue();
   <button :disabled="!isReady">Feedback</button>
 </template>
 ```
+
+## Default vs Headless Mode
+
+| Feature | Default Mode | Headless Mode |
+|---------|--------------|---------------|
+| Trigger button | Dashboard-styled | You build it |
+| Modal | Dashboard-styled | You build it |
+| API methods | Available | Available |
+| User tracking | Available | Available |
+| Dashboard config | Fetched | Fetched |
+
+Use `headless: true` when you want complete control over the UI.
 
 ## Requirements
 
