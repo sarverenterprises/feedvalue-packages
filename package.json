@@ -22,7 +22,7 @@
     "changeset": "changeset",
     "version": "changeset version",
     "release": "pnpm build && changeset publish",
-    "release:oidc": "pnpm build && pnpm -r publish --access public --no-git-checks --provenance"
+    "release:oidc": "pnpm build && cd packages/core && npm publish --access public --provenance && cd ../react && npm publish --access public --provenance && cd ../vue && npm publish --access public --provenance"
   },
   "devDependencies": {
     "@changesets/cli": "^2.27.0",
