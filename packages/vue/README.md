@@ -141,9 +141,52 @@ async function handleSubmit() {
 </template>
 ```
 
+### Custom Fields
+
+Custom fields allow you to collect structured data beyond the main feedback message. **Custom fields must be defined in your widget configuration on the FeedValue dashboard before use.**
+
+1. Go to your widget settings in the FeedValue dashboard
+2. Add custom fields with types: `text`, `email`, or `emoji`
+3. Use `customFieldValues` when submitting:
+
+```vue
+<script setup>
+import { ref } from 'vue';
+import { useFeedValue } from '@feedvalue/vue';
+
+const { submit, isReady } = useFeedValue();
+const name = ref('');
+const category = ref('feature');
+
+async function handleSubmit() {
+  await submit({
+    message: 'Detailed feedback',
+    customFieldValues: {
+      // Field IDs must match those defined in your widget configuration
+      name: name.value,
+      category: category.value,
+    },
+  });
+}
+</script>
+
+<template>
+  <form @submit.prevent="handleSubmit">
+    <input v-model="name" placeholder="Your name" />
+    <select v-model="category">
+      <option value="bug">Bug Report</option>
+      <option value="feature">Feature Request</option>
+    </select>
+    <button type="submit" :disabled="!isReady">Submit</button>
+  </form>
+</template>
+```
+
+> **Important**: The field IDs in `customFieldValues` must match the field IDs defined in your widget configuration on the dashboard.
+
 ### User Identification
 
-User data is automatically included with feedback submissions:
+Attach user context to feedback submissions. This data is **not shown in the widget UI** but is stored with the submission and visible in your FeedValue dashboard:
 
 ```vue
 <script setup>
@@ -167,6 +210,10 @@ watch(() => props.user, (user) => {
 }, { immediate: true });
 </script>
 ```
+
+> **User Data vs Custom Fields**
+> - **User data** (`identify`/`setData`): Hidden from users, automatically attached to submissions. Use for internal context like user IDs, subscription plans, etc.
+> - **Custom fields** (`customFieldValues`): Shown as form inputs in the widget. Users fill these in themselves. Must be defined in widget configuration first.
 
 ### Options API Support
 

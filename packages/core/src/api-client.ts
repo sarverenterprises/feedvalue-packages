@@ -93,16 +93,23 @@ export class ApiClient {
   /**
    * Fetch widget configuration
    * Uses caching and request deduplication
+   *
+   * @param widgetId - Widget ID to fetch config for
+   * @param forceRefresh - Skip cache and fetch fresh config (used for token refresh)
    */
-  async fetchConfig(widgetId: string): Promise<ConfigResponse> {
+  async fetchConfig(widgetId: string, forceRefresh = false): Promise<ConfigResponse> {
     this.validateWidgetId(widgetId);
     const cacheKey = `config:${widgetId}`;
 
-    // Check cache first
-    const cached = this.configCache.get(cacheKey);
-    if (cached && Date.now() < cached.expiresAt) {
-      this.log('Config cache hit', { widgetId });
-      return cached.data;
+    // Check cache first (unless forcing refresh)
+    if (!forceRefresh) {
+      const cached = this.configCache.get(cacheKey);
+      if (cached && Date.now() < cached.expiresAt) {
+        this.log('Config cache hit', { widgetId });
+        return cached.data;
+      }
+    } else {
+      this.log('Bypassing cache for token refresh', { widgetId });
     }
 
     // Deduplicate concurrent requests
@@ -135,7 +142,12 @@ export class ApiClient {
       headers['X-Client-Fingerprint'] = this.fingerprint;
     }
 
-    this.log('Fetching config', { widgetId, url });
+    this.log('Fetching config', {
+      widgetId,
+      url,
+      hasFingerprint: !!this.fingerprint,
+      fingerprintPreview: this.fingerprint ? `${this.fingerprint.substring(0, 8)}...` : null,
+    });
 
     const response = await fetch(url, {
       method: 'GET',
@@ -155,6 +167,12 @@ export class ApiClient {
       this.tokenExpiresAt = data.token_expires_at ?? null;
       this.log('Submission token stored', {
         expiresAt: this.tokenExpiresAt ? new Date(this.tokenExpiresAt * 1000).toISOString() : 'unknown',
+      });
+    } else {
+      this.log('No submission token in response', {
+        hasWidgetId: !!data.widget_id,
+        hasConfig: !!data.config,
+        responseKeys: Object.keys(data),
       });
     }
 
@@ -180,10 +198,10 @@ export class ApiClient {
     this.validateWidgetId(widgetId);
     const url = `${this.baseUrl}/api/v1/widgets/${widgetId}/feedback`;
 
-    // Refresh token if needed
+    // Refresh token if needed (force refresh to bypass cache)
     if (!this.hasValidToken()) {
       this.log('Token expired, refreshing...');
-      await this.fetchConfig(widgetId);
+      await this.fetchConfig(widgetId, true);
     }
 
     if (!this.submissionToken) {
@@ -201,17 +219,23 @@ export class ApiClient {
 
     this.log('Submitting feedback', { widgetId });
 
+    // Merge user data into metadata (core-api stores metadata, not separate user field)
+    // User data from identify()/setData() goes into metadata.user
+    const mergedMetadata = {
+      ...feedback.metadata,
+      ...(userData && Object.keys(userData).length > 0 && {
+        user: userData,
+      }),
+    };
+
     const response = await fetch(url, {
       method: 'POST',
       headers,
       body: JSON.stringify({
         message: feedback.message,
-        metadata: feedback.metadata,
+        metadata: Object.keys(mergedMetadata).length > 0 ? mergedMetadata : undefined,
         ...(feedback.customFieldValues && {
           customFieldValues: feedback.customFieldValues,
-        }),
-        ...(userData && Object.keys(userData).length > 0 && {
-          user: userData,
         }),
       }),
     });
@@ -239,7 +263,7 @@ export class ApiClient {
       if (errorMessage.includes('token') || errorMessage.includes('expired')) {
         this.log('Token rejected, refreshing...');
         this.submissionToken = null;
-        await this.fetchConfig(widgetId);
+        await this.fetchConfig(widgetId, true);
 
         if (this.submissionToken) {
           // Retry with new token

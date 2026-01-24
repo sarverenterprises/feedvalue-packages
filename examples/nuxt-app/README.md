@@ -20,7 +20,17 @@ npm install
 pnpm install
 ```
 
-2. Run the development server:
+2. Configure the API URL (optional):
+
+```bash
+# Copy the example environment file
+cp .env.example .env
+
+# For local development with core-api:
+echo "NUXT_PUBLIC_FEEDVALUE_API_URL=http://localhost:3001" >> .env
+```
+
+3. Run the development server:
 
 ```bash
 npm run dev
@@ -28,7 +38,13 @@ npm run dev
 pnpm dev
 ```
 
-3. Open [http://localhost:3000](http://localhost:3000) in your browser.
+4. Open [http://localhost:3000](http://localhost:3000) in your browser.
+
+## Environment Variables
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `NUXT_PUBLIC_FEEDVALUE_API_URL` | FeedValue API base URL | `https://api.feedvalue.com` |
 
 ## Key Files
 

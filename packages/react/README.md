@@ -153,9 +153,46 @@ export function FeedbackForm() {
 }
 ```
 
+### Custom Fields
+
+Custom fields allow you to collect structured data beyond the main feedback message. **Custom fields must be defined in your widget configuration on the FeedValue dashboard before use.**
+
+1. Go to your widget settings in the FeedValue dashboard
+2. Add custom fields with types: `text`, `email`, or `emoji`
+3. Use `customFieldValues` when submitting:
+
+```tsx
+'use client';
+
+import { useFeedValue } from '@feedvalue/react';
+
+export function DetailedFeedback() {
+  const { submit, isReady } = useFeedValue();
+
+  const handleSubmit = async () => {
+    await submit({
+      message: 'Detailed feedback',
+      customFieldValues: {
+        // Field IDs must match those defined in your widget configuration
+        name: 'John Doe',
+        category: 'feature',
+      },
+    });
+  };
+
+  return (
+    <button onClick={handleSubmit} disabled={!isReady}>
+      Submit Feedback
+    </button>
+  );
+}
+```
+
+> **Important**: The field IDs in `customFieldValues` must match the field IDs defined in your widget configuration on the dashboard.
+
 ### User Identification
 
-User data is automatically included with feedback submissions:
+Attach user context to feedback submissions. This data is **not shown in the widget UI** but is stored with the submission and visible in your FeedValue dashboard:
 
 ```tsx
 'use client';
@@ -182,6 +219,10 @@ export function UserIdentifier({ user }) {
   return null;
 }
 ```
+
+> **User Data vs Custom Fields**
+> - **User data** (`identify`/`setData`): Hidden from users, automatically attached to submissions. Use for internal context like user IDs, subscription plans, etc.
+> - **Custom fields** (`customFieldValues`): Shown as form inputs in the widget. Users fill these in themselves. Must be defined in widget configuration first.
 
 ## API Reference
 

@@ -8,12 +8,11 @@ describe('fingerprint', () => {
   });
 
   describe('generateFingerprint', () => {
-    it('should return a valid UUID format', () => {
+    it('should return a valid 32-character hex string', () => {
       const fingerprint = generateFingerprint();
-      // UUID v4 format: xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx
-      expect(fingerprint).toMatch(
-        /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
-      );
+      // 32-character hex string (16 bytes)
+      expect(fingerprint).toMatch(/^[0-9a-f]{32}$/i);
+      expect(fingerprint).toHaveLength(32);
     });
 
     it('should return the same fingerprint within a session', () => {
@@ -34,6 +33,21 @@ describe('fingerprint', () => {
       expect(sessionStorage.getItem('fv_fingerprint')).toBe(fingerprint);
     });
 
+    it('should migrate old UUID format to hex format', () => {
+      // Simulate an old UUID-format fingerprint in storage
+      const oldUuidFingerprint = 'f0f01214-cebb-4c8f-a229-8b872baa6164';
+      sessionStorage.setItem('fv_fingerprint', oldUuidFingerprint);
+
+      const fingerprint = generateFingerprint();
+
+      // Should return hex format (UUID without dashes)
+      expect(fingerprint).toBe('f0f01214cebb4c8fa2298b872baa6164');
+      expect(fingerprint).toMatch(/^[0-9a-f]{32}$/i);
+
+      // Storage should be updated to hex format
+      expect(sessionStorage.getItem('fv_fingerprint')).toBe('f0f01214cebb4c8fa2298b872baa6164');
+    });
+
     it('should handle sessionStorage being unavailable', () => {
       // Mock sessionStorage.setItem to throw
       const originalSetItem = sessionStorage.setItem;
@@ -44,7 +58,7 @@ describe('fingerprint', () => {
       // Should not throw, should still return a fingerprint
       expect(() => generateFingerprint()).not.toThrow();
       const fp = generateFingerprint();
-      expect(fp).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
+      expect(fp).toMatch(/^[0-9a-f]{32}$/i);
 
       sessionStorage.setItem = originalSetItem;
     });

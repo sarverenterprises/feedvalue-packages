@@ -13,4 +13,12 @@ export default defineNuxtConfig({
       ],
     },
   },
+  runtimeConfig: {
+    public: {
+      // API base URL for FeedValue backend
+      // Set via NUXT_PUBLIC_FEEDVALUE_API_URL environment variable
+      // Default: undefined (uses SDK default: https://api.feedvalue.com)
+      feedvalueApiUrl: '',
+    },
+  },
 });
