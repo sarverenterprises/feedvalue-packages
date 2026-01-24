@@ -1,6 +1,6 @@
 # Nuxt FeedValue Example
 
-This example demonstrates how to integrate `@feedvalue/vue` with a Nuxt 3 application.
+This example demonstrates how to integrate `@feedvalue/vue` with Nuxt (3.x or 4.x).
 
 ## Features
 

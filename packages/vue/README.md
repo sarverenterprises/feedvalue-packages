@@ -294,9 +294,9 @@ const instance = inject(FEEDVALUE_KEY);
 const options = inject(FEEDVALUE_OPTIONS_KEY);
 ```
 
-## Nuxt 3 Integration
+## Nuxt Integration
 
-Create a plugin file:
+Works with Nuxt 3 and Nuxt 4. Create a plugin file:
 
 ```typescript
 // plugins/feedvalue.client.ts
