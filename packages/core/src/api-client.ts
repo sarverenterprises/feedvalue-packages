@@ -5,7 +5,7 @@
  * Includes request deduplication, caching, and error handling.
  */
 
-import type { ConfigResponse, FeedbackResponse, FeedbackData } from './types';
+import type { ConfigResponse, FeedbackResponse, FeedbackData, SubmissionUserData } from './types';
 
 /**
  * Default API base URL
@@ -170,11 +170,12 @@ export class ApiClient {
   }
 
   /**
-   * Submit feedback
+   * Submit feedback with optional user data
    */
   async submitFeedback(
     widgetId: string,
-    feedback: FeedbackData
+    feedback: FeedbackData,
+    userData?: SubmissionUserData
   ): Promise<FeedbackResponse> {
     this.validateWidgetId(widgetId);
     const url = `${this.baseUrl}/api/v1/widgets/${widgetId}/feedback`;
@@ -208,6 +209,9 @@ export class ApiClient {
         metadata: feedback.metadata,
         ...(feedback.customFieldValues && {
           customFieldValues: feedback.customFieldValues,
+        }),
+        ...(userData && Object.keys(userData).length > 0 && {
+          user: userData,
         }),
       }),
     });
@@ -248,6 +252,9 @@ export class ApiClient {
               metadata: feedback.metadata,
               ...(feedback.customFieldValues && {
                 customFieldValues: feedback.customFieldValues,
+              }),
+              ...(userData && Object.keys(userData).length > 0 && {
+                user: userData,
               }),
             }),
           });

@@ -71,6 +71,7 @@ export type {
   // API Types (for advanced usage)
   ConfigResponse,
   FeedbackResponse,
+  SubmissionUserData,
 } from './types';
 
 // Event Emitter (for advanced usage)

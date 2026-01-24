@@ -39,6 +39,8 @@ export interface UseFeedValueReturn {
   error: Readonly<Ref<Error | null>>;
   /** Submission in progress */
   isSubmitting: Readonly<Ref<boolean>>;
+  /** Running in headless mode (no default UI rendered) */
+  isHeadless: Readonly<Ref<boolean>>;
   /** Open the feedback modal */
   open: () => void;
   /** Close the feedback modal */
@@ -99,6 +101,7 @@ export function useFeedValue(
   const isVisible = ref(false);
   const error = ref<Error | null>(null);
   const isSubmitting = ref(false);
+  const isHeadless = ref(false);
 
   // Track if we own the instance (need to destroy on unmount)
   let ownsInstance = false;
@@ -122,6 +125,7 @@ export function useFeedValue(
     // Use injected instance if available and no widgetId override
     if (injectedInstance && !widgetId) {
       instance.value = injectedInstance;
+      isHeadless.value = injectedInstance.isHeadless();
     } else {
       // Create new instance
       const effectiveWidgetId = widgetId ?? injectedOptions?.widgetId;
@@ -138,6 +142,7 @@ export function useFeedValue(
         widgetId: effectiveWidgetId,
         apiBaseUrl: injectedOptions?.apiBaseUrl,
         config: config ?? injectedOptions?.config,
+        headless: injectedOptions?.headless,
       });
       ownsInstance = true;
     }
@@ -145,6 +150,7 @@ export function useFeedValue(
     // Subscribe to state changes
     if (instance.value) {
       unsubscribe = instance.value.subscribe(syncState);
+      isHeadless.value = instance.value.isHeadless();
       syncState(); // Initial sync
     }
   });
@@ -177,6 +183,7 @@ export function useFeedValue(
     isVisible: readonly(isVisible),
     error: readonly(error),
     isSubmitting: readonly(isSubmitting),
+    isHeadless: readonly(isHeadless),
     open,
     close,
     toggle,

@@ -262,6 +262,7 @@ describe('useFeedValue Composable', () => {
             'isVisible',
             'error',
             'isSubmitting',
+            'isHeadless',
             'open',
             'close',
             'toggle',

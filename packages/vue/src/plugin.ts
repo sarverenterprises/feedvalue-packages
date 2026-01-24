@@ -18,6 +18,15 @@ export interface FeedValuePluginOptions {
   apiBaseUrl?: string;
   /** Configuration overrides */
   config?: Partial<FeedValueConfig>;
+  /**
+   * Headless mode - disables all DOM rendering.
+   * Use this when you want full control over the UI.
+   * The SDK will still fetch config and provide all API methods
+   * but won't render any trigger button or modal.
+   *
+   * @default false
+   */
+  headless?: boolean;
 }
 
 /**
@@ -61,6 +70,7 @@ export function createFeedValue(options: FeedValuePluginOptions) {
           widgetId: options.widgetId,
           apiBaseUrl: options.apiBaseUrl,
           config: options.config,
+          headless: options.headless,
         });
 
         // Provide instance to all components

@@ -20,6 +20,7 @@ import type {
   FeedbackData,
   WidgetConfig,
   EmojiSentiment,
+  SubmissionUserData,
 } from './types';
 import { TypedEventEmitter } from './event-emitter';
 import { ApiClient, DEFAULT_API_BASE_URL } from './api-client';
@@ -84,6 +85,7 @@ export class FeedValue implements FeedValueInstance {
   private readonly widgetId: string;
   private readonly apiClient: ApiClient;
   private readonly emitter: TypedEventEmitter;
+  private readonly headless: boolean;
   private config: FeedValueConfig;
   private widgetConfig: WidgetConfig | null = null;
 
@@ -120,6 +122,7 @@ export class FeedValue implements FeedValueInstance {
    */
   private constructor(options: FeedValueOptions) {
     this.widgetId = options.widgetId;
+    this.headless = options.headless ?? false;
     this.config = { ...DEFAULT_CONFIG, ...options.config };
 
     this.apiClient = new ApiClient(
@@ -130,7 +133,7 @@ export class FeedValue implements FeedValueInstance {
     this.emitter = new TypedEventEmitter();
     this.stateSnapshot = { ...this.state };
 
-    this.log('Instance created', { widgetId: this.widgetId });
+    this.log('Instance created', { widgetId: this.widgetId, headless: this.headless });
   }
 
   /**
@@ -211,8 +214,8 @@ export class FeedValue implements FeedValueInstance {
         },
       };
 
-      // Render DOM (for vanilla usage, no-op if framework handles rendering)
-      if (typeof window !== 'undefined' && typeof document !== 'undefined') {
+      // Render DOM (for vanilla usage, skip in headless mode)
+      if (!this.headless && typeof window !== 'undefined' && typeof document !== 'undefined') {
         this.renderWidget();
       }
 
@@ -285,16 +288,26 @@ export class FeedValue implements FeedValueInstance {
     }
 
     this.updateState({ isOpen: true });
-    this.overlay?.classList.add('fv-widget-open');
-    this.modal?.classList.add('fv-widget-open');
+
+    // Only manipulate DOM in non-headless mode
+    if (!this.headless) {
+      this.overlay?.classList.add('fv-widget-open');
+      this.modal?.classList.add('fv-widget-open');
+    }
+
     this.emitter.emit('open');
     this.log('Opened');
   }
 
   close(): void {
     this.updateState({ isOpen: false });
-    this.overlay?.classList.remove('fv-widget-open');
-    this.modal?.classList.remove('fv-widget-open');
+
+    // Only manipulate DOM in non-headless mode
+    if (!this.headless) {
+      this.overlay?.classList.remove('fv-widget-open');
+      this.modal?.classList.remove('fv-widget-open');
+    }
+
     this.emitter.emit('close');
     this.log('Closed');
   }
@@ -309,17 +322,23 @@ export class FeedValue implements FeedValueInstance {
 
   show(): void {
     this.updateState({ isVisible: true });
-    if (this.triggerButton) {
+
+    // Only manipulate DOM in non-headless mode
+    if (!this.headless && this.triggerButton) {
       this.triggerButton.style.display = '';
     }
+
     this.log('Shown');
   }
 
   hide(): void {
     this.updateState({ isVisible: false });
-    if (this.triggerButton) {
+
+    // Only manipulate DOM in non-headless mode
+    if (!this.headless && this.triggerButton) {
       this.triggerButton.style.display = 'none';
     }
+
     this.log('Hidden');
   }
 
@@ -337,6 +356,10 @@ export class FeedValue implements FeedValueInstance {
 
   isReady(): boolean {
     return this.state.isReady;
+  }
+
+  isHeadless(): boolean {
+    return this.headless;
   }
 
   // ===========================================================================
@@ -401,10 +424,13 @@ export class FeedValue implements FeedValueInstance {
         },
       };
 
-      await this.apiClient.submitFeedback(this.widgetId, fullFeedback);
+      // Build user data for submission if any has been set
+      const userData = this.buildSubmissionUserData();
+
+      await this.apiClient.submitFeedback(this.widgetId, fullFeedback, userData);
 
       this.emitter.emit('submit', fullFeedback);
-      this.log('Feedback submitted');
+      this.log('Feedback submitted', userData ? { withUserData: true } : undefined);
     } catch (error) {
       const err = error instanceof Error ? error : new Error(String(error));
       this.emitter.emit('error', err);
@@ -412,6 +438,60 @@ export class FeedValue implements FeedValueInstance {
     } finally {
       this.updateState({ isSubmitting: false });
     }
+  }
+
+  /**
+   * Build user data object for API submission
+   * Combines data from identify() and setData() calls
+   */
+  private buildSubmissionUserData(): SubmissionUserData | undefined {
+    const hasUserId = this._userId !== null;
+    const hasUserData = Object.keys(this._userData).length > 0;
+    const hasTraits = Object.keys(this._userTraits).length > 0;
+
+    // No user data set, return undefined
+    if (!hasUserId && !hasUserData && !hasTraits) {
+      return undefined;
+    }
+
+    const result: SubmissionUserData = {};
+
+    // Add user ID if set via identify()
+    if (this._userId) {
+      result.user_id = this._userId;
+    }
+
+    // Extract email and name from userData (setData) or traits (identify)
+    const email = this._userData.email ?? (this._userTraits.email as string | undefined);
+    const name = this._userData.name ?? (this._userTraits.name as string | undefined);
+
+    if (email) result.email = email;
+    if (name) result.name = name;
+
+    // Add traits (excluding email/name which are top-level)
+    if (hasTraits) {
+      const { email: _e, name: _n, ...otherTraits } = this._userTraits;
+      if (Object.keys(otherTraits).length > 0) {
+        result.traits = otherTraits;
+      }
+    }
+
+    // Add custom data from setData() (excluding email/name which are top-level)
+    if (hasUserData) {
+      const { email: _e, name: _n, ...customData } = this._userData;
+      // Filter out undefined values
+      const filtered: Record<string, string> = {};
+      for (const [key, value] of Object.entries(customData)) {
+        if (value !== undefined) {
+          filtered[key] = value;
+        }
+      }
+      if (Object.keys(filtered).length > 0) {
+        result.custom_data = filtered;
+      }
+    }
+
+    return result;
   }
 
   /**

@@ -99,6 +99,15 @@ export interface FeedValueOptions {
   debug?: boolean | undefined;
   /** Initial configuration overrides */
   config?: Partial<FeedValueConfig> | undefined;
+  /**
+   * Headless mode - disables all DOM rendering.
+   * Use this when you want full control over the UI.
+   * The SDK will still fetch config and provide all API methods
+   * (open, close, submit, etc.) but won't render any elements.
+   *
+   * @default false
+   */
+  headless?: boolean | undefined;
 }
 
 /**
@@ -232,6 +241,23 @@ export interface UserTraits {
 // ============================================================================
 
 /**
+ * User identification data for API submissions
+ * Sent with feedback when identify() or setData() has been called
+ */
+export interface SubmissionUserData {
+  /** User ID (from identify()) */
+  user_id?: string;
+  /** User email (from setData or identify traits) */
+  email?: string;
+  /** User display name (from setData or identify traits) */
+  name?: string;
+  /** Additional user traits (from identify()) */
+  traits?: Record<string, unknown>;
+  /** Custom user data (from setData()) */
+  custom_data?: Record<string, string>;
+}
+
+/**
  * API response for widget config
  */
 export interface ConfigResponse {
@@ -287,6 +313,8 @@ export interface FeedValueInstance {
   isVisible(): boolean;
   /** Check if widget is ready */
   isReady(): boolean;
+  /** Check if running in headless mode (no DOM rendering) */
+  isHeadless(): boolean;
 
   // User Data
   /** Set user data (email, name, custom fields) */

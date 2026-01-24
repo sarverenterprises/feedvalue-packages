@@ -41,6 +41,8 @@ export interface FeedValueContextValue {
   error: Error | null;
   /** Submission in progress */
   isSubmitting: boolean;
+  /** Running in headless mode (no default UI rendered) */
+  isHeadless: boolean;
   /** Open the feedback modal */
   open: () => void;
   /** Close the feedback modal */
@@ -76,6 +78,15 @@ export interface FeedValueProviderProps {
   apiBaseUrl?: string;
   /** Configuration overrides */
   config?: Partial<FeedValueConfig>;
+  /**
+   * Headless mode - disables all DOM rendering.
+   * Use this when you want full control over the UI.
+   * The SDK will still fetch config and provide all API methods
+   * but won't render any trigger button or modal.
+   *
+   * @default false
+   */
+  headless?: boolean;
   /** Children */
   children: ReactNode;
   /** Callback when widget is ready */
@@ -132,6 +143,7 @@ export function FeedValueProvider({
   widgetId,
   apiBaseUrl,
   config,
+  headless,
   children,
   onReady,
   onOpen,
@@ -154,6 +166,7 @@ export function FeedValueProvider({
       widgetId,
       apiBaseUrl,
       config,
+      headless,
     });
     instanceRef.current = instance;
 
@@ -179,7 +192,7 @@ export function FeedValueProvider({
       instance.destroy();
       instanceRef.current = null;
     };
-  }, [widgetId, apiBaseUrl]); // Re-init if widgetId or apiBaseUrl changes
+  }, [widgetId, apiBaseUrl, headless]); // Re-init if widgetId, apiBaseUrl, or headless changes
 
   // Use useSyncExternalStore for concurrent mode compatibility
   const state = useSyncExternalStore(
@@ -225,6 +238,7 @@ export function FeedValueProvider({
       isVisible: state.isVisible,
       error: state.error,
       isSubmitting: state.isSubmitting,
+      isHeadless: headless ?? false,
       open,
       close,
       toggle,
@@ -235,7 +249,7 @@ export function FeedValueProvider({
       setData,
       reset,
     }),
-    [state, open, close, toggle, show, hide, submit, identify, setData, reset]
+    [state, headless, open, close, toggle, show, hide, submit, identify, setData, reset]
   );
 
   return (

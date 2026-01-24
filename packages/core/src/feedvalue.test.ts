@@ -441,6 +441,163 @@ describe('FeedValue', () => {
       ).resolves.not.toThrow();
     });
 
+    it('should include user data from identify() in submission', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(mockConfigResponse),
+      }).mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ feedback_id: 'fb-123' }),
+      });
+
+      const instance = FeedValue.init({ widgetId: 'test-widget-123' });
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      // Set user identity
+      instance.identify('user-456', { plan: 'enterprise', company: 'Acme Corp' });
+
+      await instance.submit({ message: 'Love the product!' });
+
+      // Check the second fetch call (feedback submission)
+      const submitCall = mockFetch.mock.calls[1];
+      const body = JSON.parse(submitCall[1].body);
+
+      expect(body.user).toBeDefined();
+      expect(body.user.user_id).toBe('user-456');
+      expect(body.user.traits).toEqual({ plan: 'enterprise', company: 'Acme Corp' });
+    });
+
+    it('should include user data from setData() in submission', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(mockConfigResponse),
+      }).mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ feedback_id: 'fb-123' }),
+      });
+
+      const instance = FeedValue.init({ widgetId: 'test-widget-123' });
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      // Set user data
+      instance.setData({ email: 'user@example.com', name: 'John Doe', customField: 'value' });
+
+      await instance.submit({ message: 'Great feature!' });
+
+      // Check the second fetch call (feedback submission)
+      const submitCall = mockFetch.mock.calls[1];
+      const body = JSON.parse(submitCall[1].body);
+
+      expect(body.user).toBeDefined();
+      expect(body.user.email).toBe('user@example.com');
+      expect(body.user.name).toBe('John Doe');
+      expect(body.user.custom_data).toEqual({ customField: 'value' });
+    });
+
+    it('should combine identify() and setData() in submission', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(mockConfigResponse),
+      }).mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ feedback_id: 'fb-123' }),
+      });
+
+      const instance = FeedValue.init({ widgetId: 'test-widget-123' });
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      // Set both identity and custom data
+      instance.identify('user-789', { plan: 'pro' });
+      instance.setData({ email: 'user@example.com', customField: 'custom-value' });
+
+      await instance.submit({ message: 'Testing combined data' });
+
+      // Check the second fetch call (feedback submission)
+      const submitCall = mockFetch.mock.calls[1];
+      const body = JSON.parse(submitCall[1].body);
+
+      expect(body.user).toBeDefined();
+      expect(body.user.user_id).toBe('user-789');
+      expect(body.user.email).toBe('user@example.com');
+      expect(body.user.traits).toEqual({ plan: 'pro' });
+      expect(body.user.custom_data).toEqual({ customField: 'custom-value' });
+    });
+
+    it('should not include user field if no user data set', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(mockConfigResponse),
+      }).mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ feedback_id: 'fb-123' }),
+      });
+
+      const instance = FeedValue.init({ widgetId: 'test-widget-123' });
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      // Don't set any user data
+      await instance.submit({ message: 'Anonymous feedback' });
+
+      // Check the second fetch call (feedback submission)
+      const submitCall = mockFetch.mock.calls[1];
+      const body = JSON.parse(submitCall[1].body);
+
+      expect(body.user).toBeUndefined();
+    });
+
+    it('should not include user field after reset()', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(mockConfigResponse),
+      }).mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ feedback_id: 'fb-123' }),
+      });
+
+      const instance = FeedValue.init({ widgetId: 'test-widget-123' });
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      // Set user data then reset
+      instance.identify('user-123', { plan: 'pro' });
+      instance.setData({ email: 'user@example.com' });
+      instance.reset();
+
+      await instance.submit({ message: 'Feedback after reset' });
+
+      // Check the second fetch call (feedback submission)
+      const submitCall = mockFetch.mock.calls[1];
+      const body = JSON.parse(submitCall[1].body);
+
+      expect(body.user).toBeUndefined();
+    });
+
+    it('should prefer setData email/name over identify traits', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(mockConfigResponse),
+      }).mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ feedback_id: 'fb-123' }),
+      });
+
+      const instance = FeedValue.init({ widgetId: 'test-widget-123' });
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      // Set traits with email/name, then override with setData
+      instance.identify('user-123', { email: 'traits@example.com', name: 'Traits Name' });
+      instance.setData({ email: 'setdata@example.com', name: 'SetData Name' });
+
+      await instance.submit({ message: 'Testing priority' });
+
+      // Check the second fetch call (feedback submission)
+      const submitCall = mockFetch.mock.calls[1];
+      const body = JSON.parse(submitCall[1].body);
+
+      // setData values should take priority
+      expect(body.user.email).toBe('setdata@example.com');
+      expect(body.user.name).toBe('SetData Name');
+    });
+
     it('should throw if metadata field exceeds maximum length', async () => {
       const instance = FeedValue.init({ widgetId: 'test-widget-123' });
       await new Promise((resolve) => setTimeout(resolve, 50));
@@ -569,6 +726,121 @@ describe('FeedValue', () => {
       // These should not throw
       expect(() => instance.open()).not.toThrow();
       expect(() => instance.close()).not.toThrow();
+    });
+  });
+
+  describe('headless mode', () => {
+    it('should not render DOM elements in headless mode', async () => {
+      const instance = FeedValue.init({
+        widgetId: 'test-widget-123',
+        headless: true,
+      });
+
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      // No DOM elements should be rendered
+      expect(document.querySelector('.fv-widget-trigger')).toBeNull();
+      expect(document.querySelector('.fv-widget-modal')).toBeNull();
+      expect(document.querySelector('.fv-widget-overlay')).toBeNull();
+
+      instance.destroy();
+    });
+
+    it('should report isHeadless() correctly', () => {
+      const headlessInstance = FeedValue.init({
+        widgetId: 'test-headless',
+        headless: true,
+      });
+      expect(headlessInstance.isHeadless()).toBe(true);
+      headlessInstance.destroy();
+
+      const normalInstance = FeedValue.init({
+        widgetId: 'test-normal',
+        headless: false,
+      });
+      expect(normalInstance.isHeadless()).toBe(false);
+      normalInstance.destroy();
+    });
+
+    it('should still emit events in headless mode', async () => {
+      const openCallback = vi.fn();
+      const closeCallback = vi.fn();
+
+      const instance = FeedValue.init({
+        widgetId: 'test-widget-123',
+        headless: true,
+      });
+      instance.on('open', openCallback);
+      instance.on('close', closeCallback);
+
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      instance.open();
+      expect(openCallback).toHaveBeenCalled();
+      expect(instance.isOpen()).toBe(true);
+
+      instance.close();
+      expect(closeCallback).toHaveBeenCalled();
+      expect(instance.isOpen()).toBe(false);
+
+      instance.destroy();
+    });
+
+    it('should still update state in headless mode', async () => {
+      const stateCallback = vi.fn();
+
+      const instance = FeedValue.init({
+        widgetId: 'test-widget-123',
+        headless: true,
+      });
+      instance.subscribe(stateCallback);
+
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      const initialCalls = stateCallback.mock.calls.length;
+
+      instance.open();
+      expect(stateCallback.mock.calls.length).toBeGreaterThan(initialCalls);
+      expect(instance.getSnapshot().isOpen).toBe(true);
+
+      instance.destroy();
+    });
+
+    it('should still allow feedback submission in headless mode', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(mockConfigResponse),
+      }).mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ feedback_id: 'fb-headless' }),
+      });
+
+      const submitCallback = vi.fn();
+      const instance = FeedValue.init({
+        widgetId: 'test-widget-123',
+        headless: true,
+      });
+      instance.on('submit', submitCallback);
+
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      await instance.submit({ message: 'Headless feedback!' });
+
+      expect(submitCallback).toHaveBeenCalled();
+
+      instance.destroy();
+    });
+
+    it('should default to non-headless mode', async () => {
+      const instance = FeedValue.init({ widgetId: 'test-widget-123' });
+
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      expect(instance.isHeadless()).toBe(false);
+      // DOM elements should be rendered
+      expect(document.querySelector('.fv-widget-trigger')).not.toBeNull();
+
+      instance.destroy();
     });
   });
 
