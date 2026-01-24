@@ -30,7 +30,13 @@ cp .env.example .env
 echo "NUXT_PUBLIC_FEEDVALUE_API_URL=http://localhost:3001" >> .env
 ```
 
-3. Run the development server:
+3. Generate types for IDE support (optional):
+
+```bash
+pnpm types
+```
+
+4. Run the development server:
 
 ```bash
 npm run dev
@@ -38,7 +44,7 @@ npm run dev
 pnpm dev
 ```
 
-4. Open [http://localhost:3000](http://localhost:3000) in your browser.
+5. Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 ## Environment Variables
 

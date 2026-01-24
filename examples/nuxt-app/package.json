@@ -8,7 +8,7 @@
     "build": "nuxt build",
     "generate": "nuxt generate",
     "preview": "nuxt preview",
-    "prepare": "nuxt prepare"
+    "types": "nuxt prepare"
   },
   "dependencies": {
     "@feedvalue/vue": "workspace:*",
