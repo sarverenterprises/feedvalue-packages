@@ -80,8 +80,8 @@ document.getElementById('feedback-btn').addEventListener('click', () => {
 
 ## Examples
 
-- [Next.js Example](./examples/nextjs)
-- [Nuxt Example](./examples/nuxt)
+- [Next.js Example](./examples/nextjs-app)
+- [Nuxt Example](./examples/nuxt-app)
 
 ## Development
 
