@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { createApp, defineComponent, h, inject, nextTick } from 'vue';
+import { defineComponent, h, inject, nextTick } from 'vue';
 import { mount } from '@vue/test-utils';
-import { createFeedValue, FEEDVALUE_KEY, FEEDVALUE_OPTIONS_KEY } from './plugin';
+import { createFeedValue, FEEDVALUE_OPTIONS_KEY } from './plugin';
 import { useFeedValue } from './composables';
 import { FeedValue } from '@feedvalue/core';
 
