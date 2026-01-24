@@ -36,8 +36,17 @@ describe('FeedValue', () => {
     });
     globalThis.fetch = mockFetch;
 
-    // Mock crypto for fingerprint
+    // Mock crypto for fingerprint - include both getRandomValues and subtle
     vi.stubGlobal('crypto', {
+      getRandomValues: <T extends ArrayBufferView | null>(array: T): T => {
+        if (array) {
+          const bytes = array as unknown as Uint8Array;
+          for (let i = 0; i < bytes.length; i++) {
+            bytes[i] = Math.floor(Math.random() * 256);
+          }
+        }
+        return array;
+      },
       subtle: {
         digest: vi.fn().mockResolvedValue(new ArrayBuffer(32)),
       },
@@ -462,9 +471,9 @@ describe('FeedValue', () => {
       const submitCall = mockFetch.mock.calls[1];
       const body = JSON.parse(submitCall[1].body);
 
-      expect(body.user).toBeDefined();
-      expect(body.user.user_id).toBe('user-456');
-      expect(body.user.traits).toEqual({ plan: 'enterprise', company: 'Acme Corp' });
+      expect(body.metadata?.user).toBeDefined();
+      expect(body.metadata.user.user_id).toBe('user-456');
+      expect(body.metadata.user.traits).toEqual({ plan: 'enterprise', company: 'Acme Corp' });
     });
 
     it('should include user data from setData() in submission', async () => {
@@ -488,10 +497,10 @@ describe('FeedValue', () => {
       const submitCall = mockFetch.mock.calls[1];
       const body = JSON.parse(submitCall[1].body);
 
-      expect(body.user).toBeDefined();
-      expect(body.user.email).toBe('user@example.com');
-      expect(body.user.name).toBe('John Doe');
-      expect(body.user.custom_data).toEqual({ customField: 'value' });
+      expect(body.metadata?.user).toBeDefined();
+      expect(body.metadata.user.email).toBe('user@example.com');
+      expect(body.metadata.user.name).toBe('John Doe');
+      expect(body.metadata.user.custom_data).toEqual({ customField: 'value' });
     });
 
     it('should combine identify() and setData() in submission', async () => {
@@ -516,11 +525,11 @@ describe('FeedValue', () => {
       const submitCall = mockFetch.mock.calls[1];
       const body = JSON.parse(submitCall[1].body);
 
-      expect(body.user).toBeDefined();
-      expect(body.user.user_id).toBe('user-789');
-      expect(body.user.email).toBe('user@example.com');
-      expect(body.user.traits).toEqual({ plan: 'pro' });
-      expect(body.user.custom_data).toEqual({ customField: 'custom-value' });
+      expect(body.metadata?.user).toBeDefined();
+      expect(body.metadata.user.user_id).toBe('user-789');
+      expect(body.metadata.user.email).toBe('user@example.com');
+      expect(body.metadata.user.traits).toEqual({ plan: 'pro' });
+      expect(body.metadata.user.custom_data).toEqual({ customField: 'custom-value' });
     });
 
     it('should not include user field if no user data set', async () => {
@@ -542,7 +551,7 @@ describe('FeedValue', () => {
       const submitCall = mockFetch.mock.calls[1];
       const body = JSON.parse(submitCall[1].body);
 
-      expect(body.user).toBeUndefined();
+      expect(body.metadata?.user).toBeUndefined();
     });
 
     it('should not include user field after reset()', async () => {
@@ -568,7 +577,7 @@ describe('FeedValue', () => {
       const submitCall = mockFetch.mock.calls[1];
       const body = JSON.parse(submitCall[1].body);
 
-      expect(body.user).toBeUndefined();
+      expect(body.metadata?.user).toBeUndefined();
     });
 
     it('should prefer setData email/name over identify traits', async () => {
@@ -594,8 +603,8 @@ describe('FeedValue', () => {
       const body = JSON.parse(submitCall[1].body);
 
       // setData values should take priority
-      expect(body.user.email).toBe('setdata@example.com');
-      expect(body.user.name).toBe('SetData Name');
+      expect(body.metadata.user.email).toBe('setdata@example.com');
+      expect(body.metadata.user.name).toBe('SetData Name');
     });
 
     it('should throw if metadata field exceeds maximum length', async () => {

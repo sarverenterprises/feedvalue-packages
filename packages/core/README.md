@@ -90,6 +90,27 @@ await feedvalue.submit({
 });
 ```
 
+### Custom Fields
+
+Custom fields allow you to collect structured data beyond the main feedback message. **Custom fields must be defined in your widget configuration on the FeedValue dashboard before use.**
+
+1. Go to your widget settings in the FeedValue dashboard
+2. Add custom fields with types: `text`, `email`, or `emoji`
+3. Use `customFieldValues` to submit responses:
+
+```typescript
+await feedvalue.submit({
+  message: 'Detailed feedback',
+  customFieldValues: {
+    // Field IDs must match those defined in your widget configuration
+    name: 'John Doe',
+    category: 'feature',
+  },
+});
+```
+
+> **Important**: The field IDs in `customFieldValues` must match the field IDs defined in your widget configuration on the dashboard.
+
 ### Waiting for Ready State
 
 ```typescript
