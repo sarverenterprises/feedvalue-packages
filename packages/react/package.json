@@ -38,20 +38,20 @@
     "react-dom": ">=18.0.0"
   },
   "dependencies": {
-    "@feedvalue/core": "^0.1.4"
+    "@feedvalue/core": "workspace:^"
   },
   "devDependencies": {
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.1.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
-    "@vitest/coverage-v8": "^2.1.0",
-    "happy-dom": "^15.11.0",
+    "@vitest/coverage-v8": "^4.0.18",
+    "happy-dom": "^20.3.9",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "tsup": "^8.3.0",
     "typescript": "^5.7.0",
-    "vitest": "^2.1.0"
+    "vitest": "^4.0.18"
   },
   "publishConfig": {
     "access": "public"
