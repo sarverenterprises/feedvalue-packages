@@ -1,5 +1,11 @@
 # @feedvalue/core
 
+## 0.1.4
+
+### Patch Changes
+
+- Fix npm publishing by replacing workspace:^ with explicit version for @feedvalue/core dependency in react and vue packages
+
 ## 0.1.2
 
 ### Patch Changes
