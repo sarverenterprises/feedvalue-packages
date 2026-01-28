@@ -3,14 +3,9 @@ name: iOS SDK
 on:
   push:
     branches: [main, master]
-    paths:
-      - 'packages/ios/**'
-      - '.github/workflows/ios.yaml'
   pull_request:
     branches: [main, master]
-    paths:
-      - 'packages/ios/**'
-      - '.github/workflows/ios.yaml'
+  workflow_dispatch:  # Allow manual triggers
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -19,16 +14,11 @@ concurrency:
 jobs:
   build:
     name: Build & Test
-    runs-on: macos-14
+    runs-on: self-hosted
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Setup Xcode
-        uses: maxim-lobanov/setup-xcode@v1
-        with:
-          xcode-version: '15.2'
 
       - name: Build
         working-directory: packages/ios
@@ -36,25 +26,19 @@ jobs:
 
       - name: Run Tests
         working-directory: packages/ios
-        run: |
-          xcodebuild test \
-            -scheme FeedValue \
-            -destination 'platform=macOS' \
-            -enableCodeCoverage YES \
-            -resultBundlePath TestResults.xcresult \
-            | xcpretty --color --report junit
+        run: swift test -v
 
       - name: Upload Test Results
         uses: actions/upload-artifact@v4
         if: always()
         with:
           name: ios-test-results
-          path: packages/ios/TestResults.xcresult
+          path: packages/ios/.build/
           retention-days: 7
 
   lint:
     name: Swift Lint
-    runs-on: macos-14
+    runs-on: self-hosted
 
     steps:
       - name: Checkout
@@ -67,4 +51,5 @@ jobs:
             swiftlint lint --strict
           else
             echo "SwiftLint not installed, skipping lint check"
+            exit 0
           fi

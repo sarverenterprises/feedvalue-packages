@@ -3,14 +3,9 @@ name: Android SDK
 on:
   push:
     branches: [main, master]
-    paths:
-      - 'packages/android/**'
-      - '.github/workflows/android.yaml'
   pull_request:
     branches: [main, master]
-    paths:
-      - 'packages/android/**'
-      - '.github/workflows/android.yaml'
+  workflow_dispatch:  # Allow manual triggers
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}

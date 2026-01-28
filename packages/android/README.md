@@ -4,9 +4,20 @@ Native Android SDK for FeedValue widget integration. Headless API client with st
 
 ## Installation
 
-### Gradle
+### Gradle (Maven Central)
 
-Add to your `build.gradle.kts`:
+First, ensure Maven Central is in your repositories:
+
+```kotlin
+// settings.gradle.kts
+dependencyResolutionManagement {
+    repositories {
+        mavenCentral()
+    }
+}
+```
+
+Then add the dependency to your `build.gradle.kts`:
 
 ```kotlin
 dependencies {
@@ -21,6 +32,8 @@ dependencies {
     implementation 'com.feedvalue:sdk:1.0.0'
 }
 ```
+
+> **Note:** The SDK is distributed via [Maven Central](https://central.sonatype.com/artifact/com.feedvalue/sdk). Check for the latest version.
 
 ## Quick Start
 

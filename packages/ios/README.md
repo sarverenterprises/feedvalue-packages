@@ -10,11 +10,13 @@ Add to your `Package.swift`:
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/feedvalue/feedvalue-ios.git", from: "1.0.0")
+    .package(url: "https://github.com/feedvalue/feedvalue-swift.git", from: "1.0.0")
 ]
 ```
 
-Or in Xcode: File → Add Package Dependencies → Enter the repository URL.
+Or in Xcode: **File → Add Package Dependencies** → Search for `feedvalue-swift`.
+
+> **Note:** The SDK is distributed via Swift Package Registry. See [releases](https://github.com/feedvalue/feedvalue-swift/releases) for available versions.
 
 ## Quick Start
 
