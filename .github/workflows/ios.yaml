@@ -1,0 +1,70 @@
+name: iOS SDK
+
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - 'packages/ios/**'
+      - '.github/workflows/ios.yaml'
+  pull_request:
+    branches: [main, master]
+    paths:
+      - 'packages/ios/**'
+      - '.github/workflows/ios.yaml'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build & Test
+    runs-on: macos-14
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: '15.2'
+
+      - name: Build
+        working-directory: packages/ios
+        run: swift build -v
+
+      - name: Run Tests
+        working-directory: packages/ios
+        run: |
+          xcodebuild test \
+            -scheme FeedValue \
+            -destination 'platform=macOS' \
+            -enableCodeCoverage YES \
+            -resultBundlePath TestResults.xcresult \
+            | xcpretty --color --report junit
+
+      - name: Upload Test Results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ios-test-results
+          path: packages/ios/TestResults.xcresult
+          retention-days: 7
+
+  lint:
+    name: Swift Lint
+    runs-on: macos-14
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run SwiftLint
+        working-directory: packages/ios
+        run: |
+          if command -v swiftlint &> /dev/null; then
+            swiftlint lint --strict
+          else
+            echo "SwiftLint not installed, skipping lint check"
+          fi
