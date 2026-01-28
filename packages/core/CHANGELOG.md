@@ -1,5 +1,15 @@
 # @feedvalue/core
 
+## 0.1.6
+
+### Patch Changes
+
+- **Trigger button styling**: Fixed icon mode to match widget-bundle behavior exactly
+  - Icon mode now renders a circular 56x56px button with only the SVG icon (no text)
+  - Text mode renders a rectangular button with text only
+  - Updated SVG icons to match widget-bundle exactly (chat, message, feedback, comment, help, lightbulb)
+- **CSS improvements**: Added `.fv-widget-trigger-icon` class for circular icon-only buttons
+
 ## 0.1.5
 
 ### Patch Changes

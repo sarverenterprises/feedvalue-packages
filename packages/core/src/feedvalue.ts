@@ -714,9 +714,6 @@ export class FeedValue implements FeedValueInstance {
       .fv-widget-trigger {
         position: fixed;
         ${positionStyles}
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
         background-color: ${styling.primaryColor};
         color: ${styling.buttonTextColor};
         padding: 12px 24px;
@@ -735,13 +732,18 @@ export class FeedValue implements FeedValueInstance {
         box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
       }
       .fv-widget-trigger-icon {
+        width: 56px;
+        height: 56px;
+        padding: 14px;
+        border-radius: 50%;
         display: flex;
         align-items: center;
         justify-content: center;
       }
       .fv-widget-trigger-icon svg {
-        width: 20px;
-        height: 20px;
+        width: 24px;
+        height: 24px;
+        stroke: currentColor;
       }
       .fv-widget-overlay {
         position: fixed;
@@ -900,66 +902,53 @@ export class FeedValue implements FeedValueInstance {
   }
 
   /**
-   * Get SVG icon element for trigger button using safe DOM parsing
+   * SVG icons for trigger button (matching widget-bundle exactly)
    */
-  private createTriggerIcon(iconType: string): SVGElement | null {
-    // Hardcoded SVG strings for each icon type (Lucide icons)
-    const icons: Record<string, string> = {
-      chat: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>',
-      message: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>',
-      feedback: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/></svg>',
-      comment: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><line x1="9" y1="10" x2="15" y2="10"/></svg>',
-      help: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>',
-      lightbulb: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="9" y1="18" x2="15" y2="18"/><line x1="10" y1="22" x2="14" y2="22"/><path d="M15.09 14c.18-.98.65-1.74 1.41-2.5A4.65 4.65 0 0 0 18 8 6 6 0 0 0 6 8c0 1 .23 2.23 1.5 3.5A4.61 4.61 0 0 1 8.91 14"/></svg>',
-    };
+  private static readonly TRIGGER_ICONS: Record<string, string> = {
+    chat: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></svg>',
+    message: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M8 12h.01"/><path d="M12 12h.01"/><path d="M16 12h.01"/></svg>',
+    feedback: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 9a2 2 0 0 1-2 2H6l-4 4V4c0-1.1.9-2 2-2h8a2 2 0 0 1 2 2v5Z"/><path d="M18 9h2a2 2 0 0 1 2 2v11l-4-4h-6a2 2 0 0 1-2-2v-1"/></svg>',
+    comment: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M13 8H7"/><path d="M17 12H7"/></svg>',
+    help: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>',
+    lightbulb: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"/><path d="M9 18h6"/><path d="M10 22h4"/></svg>',
+  };
 
-    const svgString = icons[iconType];
-    if (!svgString) return null;
-
-    // Use DOMParser for safe SVG parsing (no script execution)
+  /**
+   * Parse SVG string to DOM element safely using DOMParser
+   */
+  private parseSvgString(svgString: string): SVGElement | null {
     const parser = new DOMParser();
     const doc = parser.parseFromString(svgString, 'image/svg+xml');
     const svg = doc.querySelector('svg');
-
-    // Validate the parsed result is an SVG element
     if (!svg || svg.nodeName !== 'svg') return null;
-
     return svg as SVGElement;
   }
 
   /**
    * Render trigger button using safe DOM methods
+   * Matches widget-bundle behavior: icon mode = circular button, text mode = rectangular
    */
   private renderTrigger(): void {
     if (!this.widgetConfig) return;
 
     const { triggerIcon, triggerText } = this.widgetConfig.config;
+    const hasIcon = triggerIcon && triggerIcon !== 'none';
 
     this.triggerButton = document.createElement('button');
-    this.triggerButton.className = 'fv-widget-trigger';
 
-    // Add icon if specified (not 'none')
-    if (triggerIcon && triggerIcon !== 'none') {
-      const iconSvg = this.createTriggerIcon(triggerIcon);
-      if (iconSvg) {
-        // Create icon container and append the safely parsed SVG
-        const iconSpan = document.createElement('span');
-        iconSpan.className = 'fv-widget-trigger-icon';
-        iconSpan.appendChild(iconSvg);
-        this.triggerButton.appendChild(iconSpan);
-
-        // Add text if provided (with spacing)
-        if (triggerText) {
-          const textSpan = document.createElement('span');
-          textSpan.textContent = triggerText;
-          this.triggerButton.appendChild(textSpan);
+    if (hasIcon) {
+      // Icon mode - circular button with SVG icon only (no text)
+      this.triggerButton.className = 'fv-widget-trigger fv-widget-trigger-icon';
+      const iconSvgString = FeedValue.TRIGGER_ICONS[triggerIcon];
+      if (iconSvgString) {
+        const svgElement = this.parseSvgString(iconSvgString);
+        if (svgElement) {
+          this.triggerButton.appendChild(svgElement);
         }
-      } else {
-        // Unknown icon type, fallback to text
-        this.triggerButton.textContent = triggerText;
       }
     } else {
-      // No icon, just text
+      // Text mode - standard button with text
+      this.triggerButton.className = 'fv-widget-trigger';
       this.triggerButton.textContent = triggerText;
     }
 
