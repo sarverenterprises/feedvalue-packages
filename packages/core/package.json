@@ -1,6 +1,6 @@
 {
   "name": "@feedvalue/core",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "FeedValue Core SDK - TypeScript types, initialization, and vanilla JavaScript API",
   "type": "module",
   "main": "./dist/index.cjs",

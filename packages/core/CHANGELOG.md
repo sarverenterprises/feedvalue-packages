@@ -1,5 +1,13 @@
 # @feedvalue/core
 
+## 0.1.5
+
+### Patch Changes
+
+- **Trigger icon rendering**: Added SVG icon support for trigger button. Icons now render correctly when `triggerIcon` is set to `chat`, `message`, `feedback`, `comment`, `help`, or `lightbulb`
+- **Icon styling**: Added flexbox layout and proper spacing for trigger buttons with icons
+- **Security**: Uses DOMParser for safe SVG parsing instead of innerHTML
+
 ## 0.1.4
 
 ### Patch Changes
