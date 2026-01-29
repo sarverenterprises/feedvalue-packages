@@ -116,6 +116,9 @@ export class FeedValue implements FeedValueInstance {
   // Auto-close timeout reference (for cleanup on destroy)
   private autoCloseTimeout: ReturnType<typeof setTimeout> | null = null;
 
+  // Destroyed flag - guards async continuations (fixes React StrictMode race condition)
+  private isDestroyed = false;
+
   /**
    * Create a new FeedValue instance
    * Use FeedValue.init() for public API
@@ -179,6 +182,11 @@ export class FeedValue implements FeedValueInstance {
       return;
     }
 
+    if (this.isDestroyed) {
+      this.log('Instance destroyed before init could complete');
+      return;
+    }
+
     try {
       this.log('Initializing...');
 
@@ -188,6 +196,12 @@ export class FeedValue implements FeedValueInstance {
 
       // Fetch config
       const configResponse = await this.apiClient.fetchConfig(this.widgetId);
+
+      // Guard: Check if destroyed during async fetch (React StrictMode fix)
+      if (this.isDestroyed) {
+        this.log('Instance destroyed during config fetch, aborting init');
+        return;
+      }
 
       // Build widget config
       this.widgetConfig = {
@@ -237,6 +251,10 @@ export class FeedValue implements FeedValueInstance {
    */
   destroy(): void {
     this.log('Destroying...');
+
+    // Mark as destroyed FIRST to prevent async operations from continuing
+    // This fixes React StrictMode race condition where init() completes after destroy()
+    this.isDestroyed = true;
 
     // Clear auto-close timeout to prevent memory leak
     if (this.autoCloseTimeout) {
@@ -919,6 +937,14 @@ export class FeedValue implements FeedValueInstance {
   private parseSvgString(svgString: string): SVGElement | null {
     const parser = new DOMParser();
     const doc = parser.parseFromString(svgString, 'image/svg+xml');
+
+    // Check for parser error
+    const parserError = doc.querySelector('parsererror');
+    if (parserError) {
+      this.log('SVG parse error:', parserError.textContent);
+      return null;
+    }
+
     const svg = doc.querySelector('svg');
     if (!svg || svg.nodeName !== 'svg') return null;
     return svg as SVGElement;
@@ -927,6 +953,7 @@ export class FeedValue implements FeedValueInstance {
   /**
    * Render trigger button using safe DOM methods
    * Matches widget-bundle behavior: icon mode = circular button, text mode = rectangular
+   * Falls back to text mode if icon rendering fails (fixes "square with ellipses" bug)
    */
   private renderTrigger(): void {
     if (!this.widgetConfig) return;
@@ -936,20 +963,28 @@ export class FeedValue implements FeedValueInstance {
 
     this.triggerButton = document.createElement('button');
 
+    let iconRendered = false;
     if (hasIcon) {
-      // Icon mode - circular button with SVG icon only (no text)
-      this.triggerButton.className = 'fv-widget-trigger fv-widget-trigger-icon';
+      // Try icon mode - circular button with SVG icon only (no text)
       const iconSvgString = FeedValue.TRIGGER_ICONS[triggerIcon];
       if (iconSvgString) {
         const svgElement = this.parseSvgString(iconSvgString);
         if (svgElement) {
+          this.triggerButton.className = 'fv-widget-trigger fv-widget-trigger-icon';
           this.triggerButton.appendChild(svgElement);
+          iconRendered = true;
+        } else {
+          this.log(`SVG parsing failed for icon: ${triggerIcon}, falling back to text`);
         }
+      } else {
+        this.log(`Icon not found: ${triggerIcon}, falling back to text`);
       }
-    } else {
-      // Text mode - standard button with text
+    }
+
+    // Fallback to text mode if no icon or icon rendering failed
+    if (!iconRendered) {
       this.triggerButton.className = 'fv-widget-trigger';
-      this.triggerButton.textContent = triggerText;
+      this.triggerButton.textContent = triggerText || 'Feedback';
     }
 
     this.triggerButton.addEventListener('click', () => this.open());
