@@ -437,7 +437,7 @@ export class FeedValue implements FeedValueInstance {
         metadata: {
           page_url: typeof window !== 'undefined' ? window.location.href : '',
           referrer: typeof document !== 'undefined' ? document.referrer : undefined,
-          user_agent: typeof navigator !== 'undefined' ? navigator.userAgent : undefined,
+          // Note: user_agent is captured from HTTP headers by the backend, not sent in metadata
           ...feedback.metadata,
         },
       };
