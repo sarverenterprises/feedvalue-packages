@@ -44,11 +44,20 @@ export type {
   WidgetUIConfig,
   WidgetStyling,
   TriggerIconType,
+  WidgetType,
 
   // Custom Fields
   CustomField,
   CustomFieldType,
   EmojiSentiment,
+
+  // Reactions
+  ReactionTemplate,
+  ReactionOption,
+  ReactionConfig,
+  ReactionData,
+  ReactionMetadata,
+  ReactionState,
 
   // State
   FeedValueState,
@@ -71,6 +80,7 @@ export type {
   // API Types (for advanced usage)
   ConfigResponse,
   FeedbackResponse,
+  ReactionResponse,
   SubmissionUserData,
 } from './types';
 

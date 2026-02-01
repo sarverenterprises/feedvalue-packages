@@ -41,8 +41,16 @@ export {
   type FeedValueContextValue,
 } from './provider';
 
-// Standalone component
-export { FeedValueWidget, type FeedValueWidgetProps } from './components';
+// Reaction hook
+export { useReaction, type UseReactionReturn } from './use-reaction';
+
+// Standalone components
+export {
+  FeedValueWidget,
+  ReactionButtons,
+  type FeedValueWidgetProps,
+  type ReactionButtonsProps,
+} from './components';
 
 // Re-export useful types from core
 export type {
@@ -53,4 +61,10 @@ export type {
   FeedValueEvents,
   UserData,
   UserTraits,
+  // Reaction types
+  ReactionOption,
+  ReactionConfig,
+  ReactionData,
+  ReactionState,
+  WidgetType,
 } from '@feedvalue/core';

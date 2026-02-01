@@ -79,7 +79,8 @@ export interface WidgetConfig {
   widgetId: string;
   widgetKey: string;
   appId: string;
-  config: WidgetUIConfig;
+  type: WidgetType;
+  config: WidgetUIConfig & Partial<ReactionConfig>;
   styling: WidgetStyling;
 }
 
@@ -178,6 +179,92 @@ export interface FeedbackMetadata {
 }
 
 // ============================================================================
+// Reaction Types
+// ============================================================================
+
+/**
+ * Widget type - feedback (modal form) or reaction (inline buttons)
+ */
+export type WidgetType = 'feedback' | 'reaction';
+
+/**
+ * Reaction template presets
+ */
+export type ReactionTemplate = 'thumbs' | 'helpful' | 'emoji' | 'rating';
+
+/**
+ * Single reaction option
+ */
+export interface ReactionOption {
+  /** Display label for the option */
+  label: string;
+  /** Value submitted when selected (lowercase alphanumeric with underscores/hyphens) */
+  value: string;
+  /** Icon name (Lucide icon) or emoji character */
+  icon: string;
+  /** Whether to show follow-up text input after selection */
+  showFollowUp: boolean;
+  /** Placeholder text for follow-up input (if showFollowUp is true) */
+  followUpPlaceholder?: string;
+}
+
+/**
+ * Reaction widget configuration
+ */
+export interface ReactionConfig {
+  /** Prebuilt template (if set, options are ignored) */
+  template?: ReactionTemplate;
+  /** Custom reaction options (required if template is null) */
+  options?: ReactionOption[];
+  /** Label for follow-up text input */
+  followUpLabel: string;
+  /** Submit button text for follow-up */
+  submitText: string;
+  /** Message shown after submission */
+  thankYouMessage: string;
+}
+
+/**
+ * Reaction submission data
+ */
+export interface ReactionData {
+  /** Selected reaction option value */
+  value: string;
+  /** Optional follow-up text */
+  followUp?: string;
+  /** Page metadata */
+  metadata?: ReactionMetadata;
+}
+
+/**
+ * Reaction metadata (auto-collected)
+ */
+export interface ReactionMetadata {
+  /** Current page URL */
+  page_url: string;
+  /** Session ID for tracking */
+  session_id?: string;
+  /** User agent string */
+  user_agent?: string;
+}
+
+/**
+ * Reaction submission state (for hooks/components)
+ */
+export interface ReactionState {
+  /** Available reaction options */
+  options: ReactionOption[] | null;
+  /** Currently submitting */
+  isSubmitting: boolean;
+  /** Successfully submitted value (null if not yet submitted) */
+  submitted: string | null;
+  /** Error if submission failed */
+  error: Error | null;
+  /** Option value requiring follow-up input (null if none) */
+  showFollowUp: string | null;
+}
+
+// ============================================================================
 // Event Types
 // ============================================================================
 
@@ -197,6 +284,12 @@ export interface FeedValueEvents {
   error: (error: Error) => void;
   /** State changed (for generic listeners) */
   stateChange: (state: FeedValueState) => void;
+  /** Reaction clicked (before submission) */
+  react: (data: { value: string; hasFollowUp: boolean }) => void;
+  /** Reaction submitted successfully */
+  reactSubmit: (data: { value: string; followUp?: string }) => void;
+  /** Reaction submission error */
+  reactError: (error: Error) => void;
 }
 
 /**
@@ -263,7 +356,8 @@ export interface SubmissionUserData {
 export interface ConfigResponse {
   widget_id: string;
   widget_key: string;
-  config: Partial<WidgetUIConfig>;
+  type: WidgetType;
+  config: Partial<WidgetUIConfig & ReactionConfig>;
   styling: Partial<WidgetStyling>;
   submission_token?: string;
   token_expires_at?: number;
@@ -277,6 +371,17 @@ export interface FeedbackResponse {
   feedback_id: string;
   message?: string;
   blocked?: boolean;
+}
+
+/**
+ * API response for reaction submission
+ */
+export interface ReactionResponse {
+  success: boolean;
+  submission_id: string | null;
+  message: string;
+  blocked: boolean;
+  block_reason?: string;
 }
 
 // ============================================================================
@@ -327,6 +432,27 @@ export interface FeedValueInstance {
   // Feedback
   /** Programmatically submit feedback */
   submit(feedback: Partial<FeedbackData>): Promise<void>;
+
+  // Reactions
+  /**
+   * Get reaction options from widget config.
+   * Returns null if widget is not a reaction type.
+   */
+  getReactionOptions(): ReactionOption[] | null;
+  /**
+   * Submit a reaction.
+   * @param value - Selected reaction option value
+   * @param options - Optional follow-up text
+   */
+  react(value: string, options?: { followUp?: string }): Promise<void>;
+  /**
+   * Check if widget is a reaction type
+   */
+  isReaction(): boolean;
+  /**
+   * Get widget type ('feedback' or 'reaction')
+   */
+  getWidgetType(): WidgetType;
 
   // Events
   /** Subscribe to an event */

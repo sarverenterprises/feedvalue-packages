@@ -19,8 +19,10 @@ import type {
   UserTraits,
   FeedbackData,
   WidgetConfig,
+  WidgetType,
   EmojiSentiment,
   SubmissionUserData,
+  ReactionOption,
 } from './types';
 import { TypedEventEmitter } from './event-emitter';
 import { ApiClient, DEFAULT_API_BASE_URL } from './api-client';
@@ -204,20 +206,28 @@ export class FeedValue implements FeedValueInstance {
       }
 
       // Build widget config
+      const baseConfig = {
+        position: configResponse.config.position ?? 'bottom-right',
+        triggerText: configResponse.config.triggerText ?? 'Feedback',
+        triggerIcon: configResponse.config.triggerIcon ?? 'none',
+        formTitle: configResponse.config.formTitle ?? 'Share your feedback',
+        submitButtonText: configResponse.config.submitButtonText ?? 'Submit',
+        thankYouMessage: configResponse.config.thankYouMessage ?? 'Thank you for your feedback!',
+        showBranding: configResponse.config.showBranding ?? true,
+        customFields: configResponse.config.customFields,
+        // Reaction config (for reaction widgets) - only include if defined
+        ...(configResponse.config.template && { template: configResponse.config.template }),
+        ...(configResponse.config.options && { options: configResponse.config.options }),
+        followUpLabel: configResponse.config.followUpLabel ?? 'Tell us more (optional)',
+        submitText: configResponse.config.submitText ?? 'Send',
+      };
+
       this.widgetConfig = {
         widgetId: configResponse.widget_id,
         widgetKey: configResponse.widget_key,
         appId: '',
-        config: {
-          position: configResponse.config.position ?? 'bottom-right',
-          triggerText: configResponse.config.triggerText ?? 'Feedback',
-          triggerIcon: configResponse.config.triggerIcon ?? 'none',
-          formTitle: configResponse.config.formTitle ?? 'Share your feedback',
-          submitButtonText: configResponse.config.submitButtonText ?? 'Submit',
-          thankYouMessage: configResponse.config.thankYouMessage ?? 'Thank you for your feedback!',
-          showBranding: configResponse.config.showBranding ?? true,
-          customFields: configResponse.config.customFields,
-        },
+        type: configResponse.type ?? 'feedback',
+        config: baseConfig,
         styling: {
           primaryColor: configResponse.styling.primaryColor ?? '#3b82f6',
           backgroundColor: configResponse.styling.backgroundColor ?? '#ffffff',
@@ -510,6 +520,132 @@ export class FeedValue implements FeedValueInstance {
     }
 
     return result;
+  }
+
+  // ===========================================================================
+  // Reactions
+  // ===========================================================================
+
+  /**
+   * Get reaction options from widget config.
+   * Returns null if widget is not a reaction type.
+   */
+  getReactionOptions(): ReactionOption[] | null {
+    if (!this.widgetConfig || this.widgetConfig.type !== 'reaction') {
+      return null;
+    }
+
+    const config = this.widgetConfig.config;
+
+    // If template is set, return template defaults
+    if (config.template) {
+      return this.getTemplateOptions(config.template);
+    }
+
+    // Otherwise return custom options
+    return config.options ?? null;
+  }
+
+  /**
+   * Get predefined options for a reaction template
+   */
+  private getTemplateOptions(template: string): ReactionOption[] {
+    const templates: Record<string, ReactionOption[]> = {
+      thumbs: [
+        { label: 'Helpful', value: 'helpful', icon: 'thumbs-up', showFollowUp: false },
+        { label: 'Not Helpful', value: 'not_helpful', icon: 'thumbs-down', showFollowUp: true },
+      ],
+      helpful: [
+        { label: 'Yes', value: 'yes', icon: 'check', showFollowUp: false },
+        { label: 'No', value: 'no', icon: 'x', showFollowUp: true },
+      ],
+      emoji: [
+        { label: 'Angry', value: 'angry', icon: '😠', showFollowUp: true },
+        { label: 'Disappointed', value: 'disappointed', icon: '😞', showFollowUp: true },
+        { label: 'Neutral', value: 'neutral', icon: '😐', showFollowUp: false },
+        { label: 'Satisfied', value: 'satisfied', icon: '😊', showFollowUp: false },
+        { label: 'Excited', value: 'excited', icon: '😍', showFollowUp: false },
+      ],
+      rating: [
+        { label: '1', value: '1', icon: '⭐', showFollowUp: true },
+        { label: '2', value: '2', icon: '⭐⭐', showFollowUp: true },
+        { label: '3', value: '3', icon: '⭐⭐⭐', showFollowUp: false },
+        { label: '4', value: '4', icon: '⭐⭐⭐⭐', showFollowUp: false },
+        { label: '5', value: '5', icon: '⭐⭐⭐⭐⭐', showFollowUp: false },
+      ],
+    };
+
+    return templates[template] ?? [];
+  }
+
+  /**
+   * Submit a reaction.
+   * @param value - Selected reaction option value
+   * @param options - Optional follow-up text
+   */
+  async react(value: string, options?: { followUp?: string }): Promise<void> {
+    if (!this.state.isReady) {
+      throw new Error('Widget not ready');
+    }
+
+    if (!this.widgetConfig || this.widgetConfig.type !== 'reaction') {
+      throw new Error('This is not a reaction widget');
+    }
+
+    // Validate the value against configured options
+    const reactionOptions = this.getReactionOptions();
+    if (!reactionOptions) {
+      throw new Error('No reaction options configured');
+    }
+
+    const selectedOption = reactionOptions.find(opt => opt.value === value);
+    if (!selectedOption) {
+      const validValues = reactionOptions.map(opt => opt.value).join(', ');
+      throw new Error(`Invalid reaction value. Must be one of: ${validValues}`);
+    }
+
+    // Emit react event (before submission)
+    this.emitter.emit('react', { value, hasFollowUp: selectedOption.showFollowUp });
+
+    this.updateState({ isSubmitting: true });
+
+    try {
+      const reactionData = {
+        value,
+        metadata: {
+          page_url: typeof window !== 'undefined' ? window.location.href : '',
+        },
+        ...(options?.followUp && { followUp: options.followUp }),
+      };
+
+      await this.apiClient.submitReaction(this.widgetId, reactionData);
+
+      const emitData = options?.followUp
+        ? { value, followUp: options.followUp }
+        : { value };
+      this.emitter.emit('reactSubmit', emitData);
+      this.log('Reaction submitted', { value });
+    } catch (error) {
+      const err = error instanceof Error ? error : new Error(String(error));
+      this.emitter.emit('reactError', err);
+      throw err;
+    } finally {
+      this.updateState({ isSubmitting: false });
+    }
+  }
+
+  /**
+   * Check if widget is a reaction type
+   */
+  isReaction(): boolean {
+    return this.widgetConfig?.type === 'reaction';
+  }
+
+  /**
+   * Get widget type ('feedback' or 'reaction')
+   */
+  getWidgetType(): WidgetType {
+    return this.widgetConfig?.type ?? 'feedback';
   }
 
   /**
