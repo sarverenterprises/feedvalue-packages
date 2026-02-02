@@ -33,6 +33,9 @@
 // Main class
 export { FeedValue } from './feedvalue';
 
+// Constants
+export { NEGATIVE_OPTIONS_MAP } from './types';
+
 // Types
 export type {
   // Configuration
@@ -44,11 +47,22 @@ export type {
   WidgetUIConfig,
   WidgetStyling,
   TriggerIconType,
+  WidgetType,
 
   // Custom Fields
   CustomField,
   CustomFieldType,
   EmojiSentiment,
+
+  // Reactions
+  ReactionTemplate,
+  ReactionOption,
+  ReactionConfig,
+  ReactionData,
+  ReactionMetadata,
+  ReactionState,
+  ButtonSize,
+  FollowUpTrigger,
 
   // State
   FeedValueState,
@@ -71,6 +85,7 @@ export type {
   // API Types (for advanced usage)
   ConfigResponse,
   FeedbackResponse,
+  ReactionResponse,
   SubmissionUserData,
 } from './types';
 

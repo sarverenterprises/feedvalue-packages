@@ -5,7 +5,7 @@
  * Includes request deduplication, caching, and error handling.
  */
 
-import type { ConfigResponse, FeedbackResponse, FeedbackData, SubmissionUserData } from './types';
+import type { ConfigResponse, FeedbackResponse, FeedbackData, ReactionData, ReactionResponse, SubmissionUserData } from './types';
 
 /**
  * Default API base URL
@@ -305,6 +305,116 @@ export class ApiClient {
     }
 
     this.log('Feedback submitted', { feedbackId: data.feedback_id });
+    return data;
+  }
+
+  /**
+   * Submit reaction
+   */
+  async submitReaction(
+    widgetId: string,
+    reaction: ReactionData
+  ): Promise<ReactionResponse> {
+    this.validateWidgetId(widgetId);
+    const url = `${this.baseUrl}/api/v1/widgets/${widgetId}/react`;
+
+    // Refresh token if needed (force refresh to bypass cache)
+    if (!this.hasValidToken()) {
+      this.log('Token expired, refreshing...');
+      await this.fetchConfig(widgetId, true);
+    }
+
+    if (!this.submissionToken) {
+      throw new Error('No submission token available');
+    }
+
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      'X-Submission-Token': this.submissionToken,
+    };
+
+    if (this.fingerprint) {
+      headers['X-Client-Fingerprint'] = this.fingerprint;
+    }
+
+    this.log('Submitting reaction', { widgetId, value: reaction.value });
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        value: reaction.value,
+        followUp: reaction.followUp,
+        metadata: reaction.metadata,
+      }),
+    });
+
+    // Handle rate limiting
+    if (response.status === 429) {
+      const resetAt = response.headers.get('X-RateLimit-Reset');
+      const retryAfter = resetAt
+        ? Math.ceil(parseInt(resetAt, 10) - Date.now() / 1000)
+        : 60;
+      throw new Error(`Rate limited. Try again in ${retryAfter} seconds.`);
+    }
+
+    // Handle forbidden (token issues)
+    if (response.status === 403) {
+      const errorData = await response.json().catch(() => ({ detail: 'Access denied' }));
+
+      // Check for subscription limit
+      if (errorData.detail?.code && errorData.detail?.message) {
+        throw new Error(errorData.detail.message);
+      }
+
+      // Try token refresh and retry once
+      const errorMessage = typeof errorData.detail === 'string' ? errorData.detail : '';
+      if (errorMessage.includes('token') || errorMessage.includes('expired')) {
+        this.log('Token rejected, refreshing...');
+        this.submissionToken = null;
+        await this.fetchConfig(widgetId, true);
+
+        if (this.submissionToken) {
+          // Retry with new token
+          headers['X-Submission-Token'] = this.submissionToken;
+          const retryResponse = await fetch(url, {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({
+              value: reaction.value,
+              followUp: reaction.followUp,
+              metadata: reaction.metadata,
+            }),
+          });
+
+          if (retryResponse.ok) {
+            return retryResponse.json();
+          }
+        }
+      }
+
+      throw new Error(errorMessage || 'Access denied');
+    }
+
+    // Handle bad request (invalid reaction value, etc.)
+    if (response.status === 400) {
+      const error = await this.parseError(response);
+      throw new Error(error);
+    }
+
+    if (!response.ok) {
+      const error = await this.parseError(response);
+      throw new Error(error);
+    }
+
+    const data = await response.json() as ReactionResponse;
+
+    // Check for soft blocks
+    if (data.blocked) {
+      throw new Error(data.message || 'Unable to submit reaction');
+    }
+
+    this.log('Reaction submitted', { submissionId: data.submission_id });
     return data;
   }
 
