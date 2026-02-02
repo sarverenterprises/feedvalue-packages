@@ -8,8 +8,16 @@
  */
 
 import { useCallback, useMemo, useState } from 'react';
-import type { ReactionOption, ReactionState } from '@feedvalue/core';
+import type { ReactionOption, ReactionState, ReactionConfig, ButtonSize, FollowUpTrigger, ReactionTemplate } from '@feedvalue/core';
 import { useFeedValue } from './provider';
+
+// Negative options map for determining follow-up trigger
+const negativeOptionsMap: Record<ReactionTemplate, string[]> = {
+  thumbs: ['not_helpful'],
+  helpful: ['no'],
+  emoji: ['angry', 'disappointed'],
+  rating: ['1', '2'],
+};
 
 /**
  * Return type for useReaction hook
@@ -25,6 +33,14 @@ export interface UseReactionReturn extends ReactionState {
   isReactionWidget: boolean;
   /** Widget configuration is ready */
   isReady: boolean;
+  /** Whether to show text labels next to icons */
+  showLabels: boolean;
+  /** Button size */
+  buttonSize: ButtonSize;
+  /** When to show follow-up input */
+  followUpTrigger: FollowUpTrigger;
+  /** Check if an option should show follow-up based on followUpTrigger */
+  shouldShowFollowUp: (optionValue: string) => boolean;
 }
 
 /**
@@ -106,10 +122,41 @@ export function useReaction(): UseReactionReturn {
     return instance.getReactionOptions();
   }, [instance, isReady]);
 
+  // Get reaction config from instance
+  const reactionConfig = useMemo<Partial<ReactionConfig> | null>(() => {
+    if (!instance || !isReady) return null;
+    const config = instance.getConfig();
+    // Access the widget config which includes reaction config
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return (instance as any)._widgetConfig?.config ?? null;
+  }, [instance, isReady]);
+
+  // Extract config values with defaults
+  const showLabels = reactionConfig?.showLabels ?? true;
+  const buttonSize: ButtonSize = reactionConfig?.buttonSize ?? 'md';
+  const followUpTrigger: FollowUpTrigger = reactionConfig?.followUpTrigger ?? 'negative';
+  const template = reactionConfig?.template;
+
   // Check if this is a reaction widget
   const isReactionWidget = useMemo(() => {
     return instance?.isReaction() ?? false;
   }, [instance]);
+
+  // Function to determine if follow-up should show for an option
+  const shouldShowFollowUp = useCallback(
+    (optionValue: string): boolean => {
+      if (followUpTrigger === 'none') return false;
+      if (followUpTrigger === 'all') return true;
+      // followUpTrigger === 'negative'
+      if (template && negativeOptionsMap[template]) {
+        return negativeOptionsMap[template].includes(optionValue);
+      }
+      // For custom options, use the option's own showFollowUp setting
+      const option = options?.find((o) => o.value === optionValue);
+      return option?.showFollowUp ?? false;
+    },
+    [followUpTrigger, template, options]
+  );
 
   // Submit reaction
   const react = useCallback(
@@ -153,5 +200,9 @@ export function useReaction(): UseReactionReturn {
     clearSubmitted,
     isReactionWidget,
     isReady,
+    showLabels,
+    buttonSize,
+    followUpTrigger,
+    shouldShowFollowUp,
   };
 }

@@ -19,7 +19,18 @@ import {
   FeedValue,
   type ReactionOption,
   type FeedValueInstance,
+  type ButtonSize,
+  type FollowUpTrigger,
+  type ReactionTemplate,
 } from '@feedvalue/core';
+
+// Negative options map for determining follow-up trigger
+const negativeOptionsMap: Record<ReactionTemplate, string[]> = {
+  thumbs: ['not_helpful'],
+  helpful: ['no'],
+  emoji: ['angry', 'disappointed'],
+  rating: ['1', '2'],
+};
 import { FEEDVALUE_KEY, FEEDVALUE_OPTIONS_KEY } from './plugin';
 
 /**
@@ -46,6 +57,14 @@ export interface UseReactionReturn {
   isReactionWidget: ComputedRef<boolean>;
   /** Widget configuration is ready */
   isReady: Readonly<Ref<boolean>>;
+  /** Whether to show text labels next to icons */
+  showLabels: ComputedRef<boolean>;
+  /** Button size */
+  buttonSize: ComputedRef<ButtonSize>;
+  /** When to show follow-up input */
+  followUpTrigger: ComputedRef<FollowUpTrigger>;
+  /** Check if an option should show follow-up based on followUpTrigger */
+  shouldShowFollowUp: (optionValue: string) => boolean;
 }
 
 /**
@@ -186,6 +205,45 @@ export function useReaction(widgetId?: string): UseReactionReturn {
     return instance.value?.isReaction() ?? false;
   });
 
+  // Computed: get config values with defaults
+  const reactionConfig = computed(() => {
+    if (!instance.value || !isReady.value) return null;
+    // Access the widget config which includes reaction config
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return (instance.value as any)._widgetConfig?.config ?? null;
+  });
+
+  const showLabels = computed(() => {
+    return reactionConfig.value?.showLabels ?? true;
+  });
+
+  const buttonSize = computed<ButtonSize>(() => {
+    return reactionConfig.value?.buttonSize ?? 'md';
+  });
+
+  const followUpTrigger = computed<FollowUpTrigger>(() => {
+    return reactionConfig.value?.followUpTrigger ?? 'negative';
+  });
+
+  const template = computed<ReactionTemplate | undefined>(() => {
+    return reactionConfig.value?.template;
+  });
+
+  /**
+   * Check if an option should show follow-up based on followUpTrigger
+   */
+  const shouldShowFollowUp = (optionValue: string): boolean => {
+    if (followUpTrigger.value === 'none') return false;
+    if (followUpTrigger.value === 'all') return true;
+    // followUpTrigger === 'negative'
+    if (template.value && negativeOptionsMap[template.value]) {
+      return negativeOptionsMap[template.value].includes(optionValue);
+    }
+    // For custom options, use the option's own showFollowUp setting
+    const option = options.value?.find((o) => o.value === optionValue);
+    return option?.showFollowUp ?? false;
+  };
+
   /**
    * Submit a reaction
    */
@@ -236,5 +294,9 @@ export function useReaction(widgetId?: string): UseReactionReturn {
     clearSubmitted,
     isReactionWidget,
     isReady: readonly(isReady),
+    showLabels,
+    buttonSize,
+    followUpTrigger,
+    shouldShowFollowUp,
   };
 }

@@ -193,6 +193,16 @@ export type WidgetType = 'feedback' | 'reaction';
 export type ReactionTemplate = 'thumbs' | 'helpful' | 'emoji' | 'rating';
 
 /**
+ * Button size options
+ */
+export type ButtonSize = 'sm' | 'md' | 'lg';
+
+/**
+ * Follow-up trigger options
+ */
+export type FollowUpTrigger = 'negative' | 'all' | 'none';
+
+/**
  * Single reaction option
  */
 export interface ReactionOption {
@@ -222,6 +232,12 @@ export interface ReactionConfig {
   submitText: string;
   /** Message shown after submission */
   thankYouMessage: string;
+  /** Whether to show text labels next to icons */
+  showLabels?: boolean;
+  /** Button size: 'sm', 'md', or 'lg' */
+  buttonSize?: ButtonSize;
+  /** When to show follow-up input: 'negative' (default), 'all', or 'none' */
+  followUpTrigger?: FollowUpTrigger;
 }
 
 /**

@@ -76,6 +76,27 @@ export interface ReactionButtonsProps {
 }
 
 /**
+ * Button size style variants
+ */
+const sizeStyles = {
+  sm: {
+    button: { padding: '6px 12px', fontSize: '12px', gap: '4px' },
+    icon: { fontSize: '16px' },
+    label: { fontSize: '12px' },
+  },
+  md: {
+    button: { padding: '8px 16px', fontSize: '14px', gap: '6px' },
+    icon: { fontSize: '18px' },
+    label: { fontSize: '14px' },
+  },
+  lg: {
+    button: { padding: '12px 20px', fontSize: '16px', gap: '8px' },
+    icon: { fontSize: '24px' },
+    label: { fontSize: '16px' },
+  },
+};
+
+/**
  * Default button styles (inline to avoid CSS dependencies)
  */
 const defaultStyles = {
@@ -88,13 +109,10 @@ const defaultStyles = {
   button: {
     display: 'inline-flex',
     alignItems: 'center',
-    gap: '4px',
-    padding: '8px 16px',
     border: '1px solid #e0e0e0',
     borderRadius: '20px',
     background: '#fff',
     cursor: 'pointer',
-    fontSize: '14px',
     transition: 'all 0.15s ease',
   },
   buttonHover: {
@@ -167,6 +185,9 @@ function ReactionButtonsInner({
     setShowFollowUp,
     isReactionWidget,
     isReady,
+    showLabels,
+    buttonSize,
+    shouldShowFollowUp,
   } = useReaction();
 
   const [followUpText, setFollowUpText] = useState('');
@@ -175,7 +196,7 @@ function ReactionButtonsInner({
   // Handle button click
   const handleClick = useCallback(
     (option: ReactionOption) => {
-      if (option.showFollowUp && followUpMode === 'inline') {
+      if (shouldShowFollowUp(option.value) && followUpMode === 'inline') {
         setShowFollowUp(option.value);
       } else {
         react(option.value)
@@ -183,7 +204,7 @@ function ReactionButtonsInner({
           .catch((err) => onError?.(err));
       }
     },
-    [react, setShowFollowUp, followUpMode, onReact, onError]
+    [react, setShowFollowUp, followUpMode, onReact, onError, shouldShowFollowUp]
   );
 
   // Handle follow-up form submission
@@ -248,8 +269,10 @@ function ReactionButtonsInner({
           }
 
           const isHovered = hoveredButton === option.value;
+          const sizeStyle = sizeStyles[buttonSize] || sizeStyles.md;
           const buttonStyle = {
             ...defaultStyles.button,
+            ...sizeStyle.button,
             ...(isHovered ? defaultStyles.buttonHover : {}),
             ...(isSubmitting ? defaultStyles.buttonDisabled : {}),
           };
@@ -266,10 +289,10 @@ function ReactionButtonsInner({
               disabled={isSubmitting}
               aria-label={option.label}
             >
-              <span role="img" aria-hidden="true">
+              <span role="img" aria-hidden="true" style={sizeStyle.icon}>
                 {option.icon}
               </span>
-              <span>{option.label}</span>
+              {showLabels && <span style={sizeStyle.label}>{option.label}</span>}
             </button>
           );
         })}

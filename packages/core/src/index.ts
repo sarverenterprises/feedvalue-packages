@@ -58,6 +58,8 @@ export type {
   ReactionData,
   ReactionMetadata,
   ReactionState,
+  ButtonSize,
+  FollowUpTrigger,
 
   // State
   FeedValueState,

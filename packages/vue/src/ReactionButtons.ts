@@ -9,6 +9,29 @@ import { defineComponent, ref, computed, h, type PropType } from 'vue';
 import { useReaction } from './use-reaction';
 import type { ReactionOption } from '@feedvalue/core';
 
+import type { ButtonSize } from '@feedvalue/core';
+
+/**
+ * Button size style variants
+ */
+const sizeStyles: Record<ButtonSize, { button: Record<string, string>; icon: Record<string, string>; label: Record<string, string> }> = {
+  sm: {
+    button: { padding: '0.375rem 0.75rem', fontSize: '0.75rem', gap: '0.375rem' },
+    icon: { fontSize: '1rem' },
+    label: { fontSize: '0.75rem' },
+  },
+  md: {
+    button: { padding: '0.5rem 1rem', fontSize: '0.875rem', gap: '0.5rem' },
+    icon: { fontSize: '1.125rem' },
+    label: { fontSize: '0.875rem' },
+  },
+  lg: {
+    button: { padding: '0.75rem 1.25rem', fontSize: '1rem', gap: '0.625rem' },
+    icon: { fontSize: '1.5rem' },
+    label: { fontSize: '1rem' },
+  },
+};
+
 /**
  * Default CSS styles for the component
  */
@@ -27,16 +50,13 @@ const styles = {
   button: {
     display: 'inline-flex',
     alignItems: 'center',
-    gap: '0.5rem',
-    padding: '0.5rem 1rem',
-    fontSize: '0.875rem',
     fontWeight: '500',
     color: '#374151',
     backgroundColor: '#ffffff',
     border: '1px solid #d1d5db',
     borderRadius: '9999px',
     cursor: 'pointer',
-    transition: 'background-color 0.15s, border-color 0.15s',
+    transition: 'background-color 0.15s, border-color 0.15s, transform 0.1s',
   },
   buttonActive: {
     backgroundColor: '#eef2ff',
@@ -47,9 +67,7 @@ const styles = {
     opacity: 0.7,
     cursor: 'not-allowed',
   },
-  icon: {
-    fontSize: '1.125rem',
-  },
+  icon: {},
   followUp: {
     display: 'flex',
     flexDirection: 'column' as const,
@@ -182,6 +200,9 @@ export const ReactionButtons = defineComponent({
       setShowFollowUp,
       clearSubmitted,
       isReady,
+      showLabels,
+      buttonSize,
+      shouldShowFollowUp,
     } = useReaction(props.widgetId);
 
     // Local state for follow-up input
@@ -197,7 +218,7 @@ export const ReactionButtons = defineComponent({
      * Handle option click
      */
     const handleOptionClick = (option: ReactionOption) => {
-      if (option.showFollowUp) {
+      if (shouldShowFollowUp(option.value)) {
         setShowFollowUp(option.value);
       } else {
         submitReaction(option.value);
@@ -266,8 +287,16 @@ export const ReactionButtons = defineComponent({
       }
 
       // Build reaction buttons
-      const buttonElements = options.value.map((option) =>
-        h(
+      const currentSizeStyles = sizeStyles[buttonSize.value] || sizeStyles.md;
+      const buttonElements = options.value.map((option) => {
+        const children = [
+          h('span', { style: { ...styles.icon, ...currentSizeStyles.icon }, 'aria-hidden': 'true' }, option.icon),
+        ];
+        if (showLabels.value) {
+          children.push(h('span', { style: currentSizeStyles.label }, option.label));
+        }
+
+        return h(
           'button',
           {
             key: option.value,
@@ -275,19 +304,18 @@ export const ReactionButtons = defineComponent({
             class: props.buttonClass,
             style: {
               ...styles.button,
+              ...currentSizeStyles.button,
               ...(showFollowUp.value === option.value ? styles.buttonActive : {}),
               ...(isSubmitting.value ? styles.buttonDisabled : {}),
             },
             disabled: isSubmitting.value,
             'aria-pressed': showFollowUp.value === option.value,
+            'aria-label': option.label,
             onClick: () => handleOptionClick(option),
           },
-          [
-            h('span', { style: styles.icon, 'aria-hidden': 'true' }, option.icon),
-            h('span', option.label),
-          ]
-        )
-      );
+          children
+        );
+      });
 
       // Build follow-up form if needed
       let followUpForm = null;
