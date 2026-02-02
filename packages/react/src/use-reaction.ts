@@ -8,7 +8,7 @@
  */
 
 import { useCallback, useMemo, useState } from 'react';
-import type { ReactionOption, ReactionState, ReactionConfig, ButtonSize, FollowUpTrigger, ReactionTemplate } from '@feedvalue/core';
+import type { ReactionOption, ReactionState, ReactionConfig, ButtonSize, FollowUpTrigger } from '@feedvalue/core';
 import { NEGATIVE_OPTIONS_MAP } from '@feedvalue/core';
 import { useFeedValue } from './provider';
 
@@ -118,7 +118,6 @@ export function useReaction(): UseReactionReturn {
   // Get reaction config from instance
   const reactionConfig = useMemo<Partial<ReactionConfig> | null>(() => {
     if (!instance || !isReady) return null;
-    const config = instance.getConfig();
     // Access the widget config which includes reaction config
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return (instance as any)._widgetConfig?.config ?? null;

@@ -135,7 +135,7 @@ export class ApiClient {
    * Actually fetch config from API
    */
   private async doFetchConfig(widgetId: string): Promise<ConfigResponse> {
-    const url = `${this.baseUrl}/public/v1/widgets/${widgetId}/config`;
+    const url = `${this.baseUrl}/api/v1/widgets/${widgetId}/config`;
 
     const headers: Record<string, string> = {};
     if (this.fingerprint) {
@@ -196,7 +196,7 @@ export class ApiClient {
     userData?: SubmissionUserData
   ): Promise<FeedbackResponse> {
     this.validateWidgetId(widgetId);
-    const url = `${this.baseUrl}/public/v1/widgets/${widgetId}/feedback`;
+    const url = `${this.baseUrl}/api/v1/widgets/${widgetId}/feedback`;
 
     // Refresh token if needed (force refresh to bypass cache)
     if (!this.hasValidToken()) {
@@ -316,7 +316,7 @@ export class ApiClient {
     reaction: ReactionData
   ): Promise<ReactionResponse> {
     this.validateWidgetId(widgetId);
-    const url = `${this.baseUrl}/public/v1/widgets/${widgetId}/react`;
+    const url = `${this.baseUrl}/api/v1/widgets/${widgetId}/react`;
 
     // Refresh token if needed (force refresh to bypass cache)
     if (!this.hasValidToken()) {
