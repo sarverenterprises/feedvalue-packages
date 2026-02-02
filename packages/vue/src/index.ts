@@ -39,6 +39,10 @@ export {
 
 // Composables
 export { useFeedValue, type UseFeedValueReturn } from './composables';
+export { useReaction, type UseReactionReturn } from './use-reaction';
+
+// Components
+export { ReactionButtons } from './ReactionButtons';
 
 // Re-export useful types from core
 export type {
@@ -49,4 +53,8 @@ export type {
   FeedValueEvents,
   UserData,
   UserTraits,
+  ReactionOption,
+  ReactionState,
+  ReactionConfig,
+  ReactionTemplate,
 } from '@feedvalue/core';
