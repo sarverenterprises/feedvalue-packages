@@ -17,20 +17,13 @@ import {
 } from 'vue';
 import {
   FeedValue,
+  NEGATIVE_OPTIONS_MAP,
   type ReactionOption,
   type FeedValueInstance,
   type ButtonSize,
   type FollowUpTrigger,
   type ReactionTemplate,
 } from '@feedvalue/core';
-
-// Negative options map for determining follow-up trigger
-const negativeOptionsMap: Record<ReactionTemplate, string[]> = {
-  thumbs: ['not_helpful'],
-  helpful: ['no'],
-  emoji: ['angry', 'disappointed'],
-  rating: ['1', '2'],
-};
 import { FEEDVALUE_KEY, FEEDVALUE_OPTIONS_KEY } from './plugin';
 
 /**
@@ -236,8 +229,8 @@ export function useReaction(widgetId?: string): UseReactionReturn {
     if (followUpTrigger.value === 'none') return false;
     if (followUpTrigger.value === 'all') return true;
     // followUpTrigger === 'negative'
-    if (template.value && negativeOptionsMap[template.value]) {
-      return negativeOptionsMap[template.value].includes(optionValue);
+    if (template.value && NEGATIVE_OPTIONS_MAP[template.value]) {
+      return NEGATIVE_OPTIONS_MAP[template.value].includes(optionValue);
     }
     // For custom options, use the option's own showFollowUp setting
     const option = options.value?.find((o) => o.value === optionValue);

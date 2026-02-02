@@ -33,6 +33,9 @@
 // Main class
 export { FeedValue } from './feedvalue';
 
+// Constants
+export { NEGATIVE_OPTIONS_MAP } from './types';
+
 // Types
 export type {
   // Configuration

@@ -203,6 +203,25 @@ export type ButtonSize = 'sm' | 'md' | 'lg';
 export type FollowUpTrigger = 'negative' | 'all' | 'none';
 
 /**
+ * Map of negative reaction options for each template.
+ * Used to determine when to show follow-up input when followUpTrigger is 'negative'.
+ *
+ * @example
+ * ```ts
+ * import { NEGATIVE_OPTIONS_MAP, ReactionTemplate } from '@feedvalue/core';
+ *
+ * const template: ReactionTemplate = 'thumbs';
+ * const isNegative = NEGATIVE_OPTIONS_MAP[template].includes('not_helpful'); // true
+ * ```
+ */
+export const NEGATIVE_OPTIONS_MAP: Record<ReactionTemplate, string[]> = {
+  thumbs: ['not_helpful'],
+  helpful: ['no'],
+  emoji: ['angry', 'disappointed'],
+  rating: ['1', '2'],
+};
+
+/**
  * Single reaction option
  */
 export interface ReactionOption {

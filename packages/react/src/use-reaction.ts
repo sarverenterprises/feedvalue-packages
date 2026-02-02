@@ -9,15 +9,8 @@
 
 import { useCallback, useMemo, useState } from 'react';
 import type { ReactionOption, ReactionState, ReactionConfig, ButtonSize, FollowUpTrigger, ReactionTemplate } from '@feedvalue/core';
+import { NEGATIVE_OPTIONS_MAP } from '@feedvalue/core';
 import { useFeedValue } from './provider';
-
-// Negative options map for determining follow-up trigger
-const negativeOptionsMap: Record<ReactionTemplate, string[]> = {
-  thumbs: ['not_helpful'],
-  helpful: ['no'],
-  emoji: ['angry', 'disappointed'],
-  rating: ['1', '2'],
-};
 
 /**
  * Return type for useReaction hook
@@ -148,8 +141,8 @@ export function useReaction(): UseReactionReturn {
       if (followUpTrigger === 'none') return false;
       if (followUpTrigger === 'all') return true;
       // followUpTrigger === 'negative'
-      if (template && negativeOptionsMap[template]) {
-        return negativeOptionsMap[template].includes(optionValue);
+      if (template && NEGATIVE_OPTIONS_MAP[template]) {
+        return NEGATIVE_OPTIONS_MAP[template].includes(optionValue);
       }
       // For custom options, use the option's own showFollowUp setting
       const option = options?.find((o) => o.value === optionValue);
