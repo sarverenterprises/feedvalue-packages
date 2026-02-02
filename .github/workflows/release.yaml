@@ -13,7 +13,7 @@ concurrency:
 jobs:
   release:
     name: Release
-    runs-on: self-hosted
+    runs-on: ubuntu-latest # required for npmjs oidc support
     permissions:
       contents: write
       pull-requests: write
