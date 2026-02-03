@@ -203,6 +203,11 @@ export type ButtonSize = 'sm' | 'md' | 'lg';
 export type FollowUpTrigger = 'negative' | 'all' | 'none';
 
 /**
+ * Border radius options for reaction buttons
+ */
+export type ReactionBorderRadius = 'full' | 'lg' | 'md' | 'sm' | 'none';
+
+/**
  * Map of negative reaction options for each template.
  * Used to determine when to show follow-up input when followUpTrigger is 'negative'.
  *
@@ -257,6 +262,8 @@ export interface ReactionConfig {
   buttonSize?: ButtonSize;
   /** When to show follow-up input: 'negative' (default), 'all', or 'none' */
   followUpTrigger?: FollowUpTrigger;
+  /** Border radius for reaction buttons: 'full' (pill), 'lg', 'md', 'sm', or 'none' (square) */
+  borderRadius?: ReactionBorderRadius;
 }
 
 /**
