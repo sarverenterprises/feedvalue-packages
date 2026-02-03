@@ -203,6 +203,36 @@ export type ButtonSize = 'sm' | 'md' | 'lg';
 export type FollowUpTrigger = 'negative' | 'all' | 'none';
 
 /**
+ * Border radius options for reaction buttons
+ */
+export type ReactionBorderRadius = 'full' | 'lg' | 'md' | 'sm' | 'none';
+
+/**
+ * Border width options for reaction buttons
+ */
+export type ReactionBorderWidth = '0' | '1' | '2' | '3' | '4';
+
+/**
+ * Reaction widget styling configuration
+ */
+export interface ReactionStyling {
+  /** Primary/accent color (hex) */
+  primaryColor?: string;
+  /** Button background color (hex) */
+  backgroundColor?: string;
+  /** Text color (hex) */
+  textColor?: string;
+  /** Button label text color (hex) */
+  buttonTextColor?: string;
+  /** Border color (hex) */
+  borderColor?: string;
+  /** Border width preset */
+  borderWidth?: ReactionBorderWidth;
+  /** Border radius preset */
+  borderRadius?: ReactionBorderRadius;
+}
+
+/**
  * Map of negative reaction options for each template.
  * Used to determine when to show follow-up input when followUpTrigger is 'negative'.
  *
