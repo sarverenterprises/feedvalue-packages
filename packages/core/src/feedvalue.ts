@@ -554,12 +554,12 @@ export class FeedValue implements FeedValueInstance {
   private getTemplateOptions(template: string): ReactionOption[] {
     const templates: Record<string, ReactionOption[]> = {
       thumbs: [
-        { label: 'Helpful', value: 'helpful', icon: 'thumbs-up', showFollowUp: false },
-        { label: 'Not Helpful', value: 'not_helpful', icon: 'thumbs-down', showFollowUp: true },
+        { label: 'Helpful', value: 'helpful', icon: '👍', showFollowUp: false },
+        { label: 'Not Helpful', value: 'not_helpful', icon: '👎', showFollowUp: true },
       ],
       helpful: [
-        { label: 'Yes', value: 'yes', icon: 'check', showFollowUp: false },
-        { label: 'No', value: 'no', icon: 'x', showFollowUp: true },
+        { label: 'Yes', value: 'yes', icon: '✓', showFollowUp: false },
+        { label: 'No', value: 'no', icon: '✗', showFollowUp: true },
       ],
       emoji: [
         { label: 'Angry', value: 'angry', icon: '😠', showFollowUp: true },
