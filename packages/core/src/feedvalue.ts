@@ -229,12 +229,14 @@ export class FeedValue implements FeedValueInstance {
         type: configResponse.type ?? 'feedback',
         config: baseConfig,
         styling: {
+          // Pass through all styling properties from API
+          ...configResponse.styling,
+          // Apply defaults for required fields
           primaryColor: configResponse.styling.primaryColor ?? '#3b82f6',
           backgroundColor: configResponse.styling.backgroundColor ?? '#ffffff',
           textColor: configResponse.styling.textColor ?? '#1f2937',
           buttonTextColor: configResponse.styling.buttonTextColor ?? '#ffffff',
           borderRadius: configResponse.styling.borderRadius ?? '8px',
-          customCSS: configResponse.styling.customCSS,
         },
       };
 

@@ -76,6 +76,31 @@ export interface ReactionButtonsProps {
 }
 
 /**
+ * Border radius mapping from preset to CSS value
+ */
+const borderRadiusMap: Record<string, string> = {
+  full: '9999px',
+  lg: '12px',
+  md: '8px',
+  sm: '4px',
+  none: '0px',
+};
+
+/**
+ * Border width mapping from preset to CSS value
+ */
+const borderWidthMap: Record<string, string> = {
+  '0': '0px',
+  '1': '1px',
+  '2': '2px',
+  '3': '3px',
+  '4': '4px',
+  thin: '1px',
+  medium: '2px',
+  thick: '3px',
+};
+
+/**
  * Button size style variants
  */
 const sizeStyles = {
@@ -109,9 +134,7 @@ const defaultStyles = {
   button: {
     display: 'inline-flex',
     alignItems: 'center',
-    border: '1px solid #e0e0e0',
-    borderRadius: '20px',
-    background: '#fff',
+    borderStyle: 'solid',
     cursor: 'pointer',
     transition: 'all 0.15s ease',
   },
@@ -188,6 +211,7 @@ function ReactionButtonsInner({
     showLabels,
     buttonSize,
     shouldShowFollowUp,
+    styling,
   } = useReaction();
 
   const [followUpText, setFollowUpText] = useState('');
@@ -246,7 +270,7 @@ function ReactionButtonsInner({
     }
 
     return (
-      <div className={thankYouClassName} style={thankYouClassName ? undefined : defaultStyles.thankYou}>
+      <div className={thankYouClassName} style={thankYouClassName ? undefined : { ...defaultStyles.thankYou, color: styling.primaryColor ?? '#059669' }}>
         Thanks for your feedback!
       </div>
     );
@@ -270,10 +294,23 @@ function ReactionButtonsInner({
 
           const isHovered = hoveredButton === option.value;
           const sizeStyle = sizeStyles[buttonSize] || sizeStyles.md;
+
+          // Apply widget styling
+          const borderRadius = borderRadiusMap[styling.borderRadius ?? 'full'] ?? '9999px';
+          const borderWidth = borderWidthMap[styling.borderWidth ?? 'thin'] ?? '1px';
+
           const buttonStyle = {
             ...defaultStyles.button,
             ...sizeStyle.button,
-            ...(isHovered ? defaultStyles.buttonHover : {}),
+            background: styling.backgroundColor ?? '#fff',
+            borderColor: styling.borderColor ?? '#e5e7eb',
+            borderWidth: borderWidth,
+            borderRadius: borderRadius,
+            color: styling.buttonTextColor ?? '#4b5563',
+            ...(isHovered ? {
+              borderColor: styling.primaryColor ?? '#6366f1',
+              background: `${styling.primaryColor ?? '#6366f1'}10`, // 10% opacity
+            } : {}),
             ...(isSubmitting ? defaultStyles.buttonDisabled : {}),
           };
 
@@ -292,7 +329,7 @@ function ReactionButtonsInner({
               <span role="img" aria-hidden="true" style={sizeStyle.icon}>
                 {option.icon}
               </span>
-              {showLabels && <span style={sizeStyle.label}>{option.label}</span>}
+              {showLabels && <span style={{ ...sizeStyle.label, color: styling.buttonTextColor ?? '#4b5563' }}>{option.label}</span>}
             </button>
           );
         })}
@@ -315,7 +352,7 @@ function ReactionButtonsInner({
           <div style={{ display: 'flex', gap: '8px' }}>
             <button
               type="submit"
-              style={defaultStyles.submitButton}
+              style={{ ...defaultStyles.submitButton, background: styling.primaryColor ?? '#6366f1' }}
               disabled={isSubmitting}
             >
               {isSubmitting ? 'Sending...' : 'Send'}
@@ -323,7 +360,7 @@ function ReactionButtonsInner({
             <button
               type="button"
               onClick={handleCancelFollowUp}
-              style={{ ...defaultStyles.button, padding: '8px 16px' }}
+              style={{ ...defaultStyles.button, padding: '8px 16px', borderRadius: borderRadiusMap[styling.borderRadius ?? 'full'] ?? '9999px' }}
               disabled={isSubmitting}
             >
               Cancel

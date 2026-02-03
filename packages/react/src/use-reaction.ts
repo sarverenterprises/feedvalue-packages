@@ -8,7 +8,7 @@
  */
 
 import { useCallback, useMemo, useState } from 'react';
-import type { ReactionOption, ReactionState, ReactionConfig, ButtonSize, FollowUpTrigger } from '@feedvalue/core';
+import type { ReactionOption, ReactionState, ReactionConfig, ButtonSize, FollowUpTrigger, ReactionStyling } from '@feedvalue/core';
 import { NEGATIVE_OPTIONS_MAP } from '@feedvalue/core';
 import { useFeedValue } from './provider';
 
@@ -34,6 +34,8 @@ export interface UseReactionReturn extends ReactionState {
   followUpTrigger: FollowUpTrigger;
   /** Check if an option should show follow-up based on followUpTrigger */
   shouldShowFollowUp: (optionValue: string) => boolean;
+  /** Widget styling configuration */
+  styling: ReactionStyling;
 }
 
 /**
@@ -119,8 +121,8 @@ export function useReaction(): UseReactionReturn {
   const reactionConfig = useMemo<Partial<ReactionConfig> | null>(() => {
     if (!instance || !isReady) return null;
     // Access the widget config which includes reaction config
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return (instance as any)._widgetConfig?.config ?? null;
+    const widgetConfig = instance.getWidgetConfig();
+    return widgetConfig?.config ?? null;
   }, [instance, isReady]);
 
   // Extract config values with defaults
@@ -128,6 +130,39 @@ export function useReaction(): UseReactionReturn {
   const buttonSize: ButtonSize = reactionConfig?.buttonSize ?? 'md';
   const followUpTrigger: FollowUpTrigger = reactionConfig?.followUpTrigger ?? 'negative';
   const template = reactionConfig?.template;
+
+  // Get styling from instance
+  const styling = useMemo<ReactionStyling>(() => {
+    const defaultStyling: ReactionStyling = {
+      primaryColor: '#6366f1',
+      backgroundColor: '#ffffff',
+      textColor: '#111827',
+      buttonTextColor: '#4b5563',
+      borderColor: '#e5e7eb',
+      borderWidth: '1',
+      borderRadius: 'full',
+    };
+
+    if (!instance || !isReady) {
+      return defaultStyling;
+    }
+    const widgetConfig = instance.getWidgetConfig();
+    if (!widgetConfig?.styling) {
+      return defaultStyling;
+    }
+    // Cast styling to access extended properties that may be present from API
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const widgetStyling = widgetConfig.styling as any;
+    return {
+      primaryColor: widgetStyling.primaryColor ?? defaultStyling.primaryColor,
+      backgroundColor: widgetStyling.backgroundColor ?? defaultStyling.backgroundColor,
+      textColor: widgetStyling.textColor ?? defaultStyling.textColor,
+      buttonTextColor: widgetStyling.buttonTextColor ?? defaultStyling.buttonTextColor,
+      borderColor: widgetStyling.borderColor ?? defaultStyling.borderColor,
+      borderWidth: widgetStyling.borderWidth ?? defaultStyling.borderWidth,
+      borderRadius: widgetStyling.borderRadius ?? defaultStyling.borderRadius,
+    };
+  }, [instance, isReady]);
 
   // Check if this is a reaction widget
   const isReactionWidget = useMemo(() => {
@@ -196,5 +231,6 @@ export function useReaction(): UseReactionReturn {
     buttonSize,
     followUpTrigger,
     shouldShowFollowUp,
+    styling,
   };
 }
