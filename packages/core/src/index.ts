@@ -61,6 +61,9 @@ export type {
   ReactionData,
   ReactionMetadata,
   ReactionState,
+  ReactionStyling,
+  ReactionBorderRadius,
+  ReactionBorderWidth,
   ButtonSize,
   FollowUpTrigger,
 
