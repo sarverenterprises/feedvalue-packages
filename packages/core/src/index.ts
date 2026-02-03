@@ -100,3 +100,11 @@ export { ApiClient, DEFAULT_API_BASE_URL } from './api-client';
 
 // Fingerprint (for advanced usage)
 export { generateFingerprint, clearFingerprint } from './fingerprint';
+
+// Context Capture (for reaction widgets)
+export {
+  captureContext,
+  DEFAULT_CONTEXT_CAPTURE_CONFIG,
+  type ContextCaptureConfig,
+  type CapturedContext,
+} from './context-capture';

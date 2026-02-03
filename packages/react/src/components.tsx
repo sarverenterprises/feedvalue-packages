@@ -66,7 +66,7 @@ export interface ReactionButtonsProps {
   /** Callback when an error occurs */
   onError?: (error: Error) => void;
   /** Custom render function for buttons (for full control) */
-  renderButton?: (option: ReactionOption, onClick: () => void, isDisabled: boolean) => React.ReactNode;
+  renderButton?: (option: ReactionOption, onClick: (event: React.MouseEvent<HTMLButtonElement>) => void, isDisabled: boolean) => React.ReactNode;
   /** Custom render function for thank you message */
   renderThankYou?: (value: string) => React.ReactNode;
   /** Whether to show follow-up inline (default) or in a modal */
@@ -217,13 +217,18 @@ function ReactionButtonsInner({
   const [followUpText, setFollowUpText] = useState('');
   const [hoveredButton, setHoveredButton] = useState<string | null>(null);
 
+  // Store the pending trigger element for follow-up submissions
+  const [pendingTriggerElement, setPendingTriggerElement] = useState<Element | null>(null);
+
   // Handle button click
   const handleClick = useCallback(
-    (option: ReactionOption) => {
+    (option: ReactionOption, event: React.MouseEvent<HTMLButtonElement>) => {
       if (shouldShowFollowUp(option.value) && followUpMode === 'inline') {
         setShowFollowUp(option.value);
+        // Store the trigger element for when follow-up is submitted
+        setPendingTriggerElement(event.currentTarget);
       } else {
-        react(option.value)
+        react(option.value, { triggerElement: event.currentTarget })
           .then(() => onReact?.(option.value))
           .catch((err) => onError?.(err));
       }
@@ -237,20 +242,25 @@ function ReactionButtonsInner({
       e.preventDefault();
       if (!showFollowUp) return;
 
-      react(showFollowUp, followUpText.trim() || undefined)
+      react(showFollowUp, {
+        followUp: followUpText.trim() || undefined,
+        triggerElement: pendingTriggerElement,
+      })
         .then(() => {
           onReact?.(showFollowUp, followUpText.trim() || undefined);
           setFollowUpText('');
+          setPendingTriggerElement(null);
         })
         .catch((err) => onError?.(err));
     },
-    [react, showFollowUp, followUpText, onReact, onError]
+    [react, showFollowUp, followUpText, pendingTriggerElement, onReact, onError]
   );
 
   // Cancel follow-up
   const handleCancelFollowUp = useCallback(() => {
     setShowFollowUp(null);
     setFollowUpText('');
+    setPendingTriggerElement(null);
   }, [setShowFollowUp]);
 
   // Not ready or not a reaction widget
@@ -287,7 +297,7 @@ function ReactionButtonsInner({
           if (renderButton) {
             return (
               <React.Fragment key={option.value}>
-                {renderButton(option, () => handleClick(option), isSubmitting)}
+                {renderButton(option, (e) => handleClick(option, e), isSubmitting)}
               </React.Fragment>
             );
           }
@@ -320,7 +330,7 @@ function ReactionButtonsInner({
               type="button"
               className={buttonClassName}
               style={buttonClassName ? undefined : buttonStyle}
-              onClick={() => handleClick(option)}
+              onClick={(e) => handleClick(option, e)}
               onMouseEnter={() => setHoveredButton(option.value)}
               onMouseLeave={() => setHoveredButton(null)}
               disabled={isSubmitting}

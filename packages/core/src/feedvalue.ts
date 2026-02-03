@@ -27,6 +27,12 @@ import type {
 import { TypedEventEmitter } from './event-emitter';
 import { ApiClient, DEFAULT_API_BASE_URL } from './api-client';
 import { generateFingerprint } from './fingerprint';
+import {
+  captureContext,
+  type CapturedContext,
+  type ContextCaptureConfig,
+  DEFAULT_CONTEXT_CAPTURE_CONFIG,
+} from './context-capture';
 
 /** Delay before auto-closing the success message (milliseconds) */
 const SUCCESS_AUTO_CLOSE_DELAY_MS = 3000;
@@ -88,6 +94,7 @@ export class FeedValue implements FeedValueInstance {
   private readonly apiClient: ApiClient;
   private readonly emitter: TypedEventEmitter;
   private readonly headless: boolean;
+  private readonly contextCaptureConfig: ContextCaptureConfig;
   private config: FeedValueConfig;
   private widgetConfig: WidgetConfig | null = null;
 
@@ -129,6 +136,10 @@ export class FeedValue implements FeedValueInstance {
     this.widgetId = options.widgetId;
     this.headless = options.headless ?? false;
     this.config = { ...DEFAULT_CONFIG, ...options.config };
+    this.contextCaptureConfig = {
+      ...DEFAULT_CONTEXT_CAPTURE_CONFIG,
+      ...options.contextCapture,
+    };
 
     this.apiClient = new ApiClient(
       options.apiBaseUrl ?? DEFAULT_API_BASE_URL,
@@ -583,9 +594,9 @@ export class FeedValue implements FeedValueInstance {
   /**
    * Submit a reaction.
    * @param value - Selected reaction option value
-   * @param options - Optional follow-up text
+   * @param options - Optional follow-up text and trigger element for context capture
    */
-  async react(value: string, options?: { followUp?: string }): Promise<void> {
+  async react(value: string, options?: { followUp?: string; triggerElement?: Element | null }): Promise<void> {
     if (!this.state.isReady) {
       throw new Error('Widget not ready');
     }
@@ -606,6 +617,13 @@ export class FeedValue implements FeedValueInstance {
       throw new Error(`Invalid reaction value. Must be one of: ${validValues}`);
     }
 
+    // Capture DOM context if trigger element provided
+    let capturedContext: CapturedContext | null = null;
+    if (options?.triggerElement) {
+      capturedContext = captureContext(options.triggerElement, this.contextCaptureConfig);
+      this.log('Captured context', capturedContext);
+    }
+
     // Emit react event (before submission)
     this.emitter.emit('react', { value, hasFollowUp: selectedOption.showFollowUp });
 
@@ -616,6 +634,13 @@ export class FeedValue implements FeedValueInstance {
         value,
         metadata: {
           page_url: typeof window !== 'undefined' ? window.location.href : '',
+          // Spread captured context into metadata
+          ...(capturedContext?.sectionId && { section_id: capturedContext.sectionId }),
+          ...(capturedContext?.sectionTag && { section_tag: capturedContext.sectionTag }),
+          ...(capturedContext?.nearestHeading && { nearest_heading: capturedContext.nearestHeading }),
+          ...(capturedContext?.headingLevel && { heading_level: capturedContext.headingLevel }),
+          ...(capturedContext?.dataAttributes && { data_attributes: capturedContext.dataAttributes }),
+          ...(capturedContext?.cssSelector && { css_selector: capturedContext.cssSelector }),
         },
         ...(options?.followUp && { followUp: options.followUp }),
       };
