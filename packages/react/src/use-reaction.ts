@@ -132,7 +132,7 @@ export function useReaction(): UseReactionReturn {
   // Check if this is a reaction widget
   const isReactionWidget = useMemo(() => {
     return instance?.isReaction() ?? false;
-  }, [instance]);
+  }, [instance, isReady]);
 
   // Function to determine if follow-up should show for an option
   const shouldShowFollowUp = useCallback(
