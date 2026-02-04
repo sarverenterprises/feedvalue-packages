@@ -29,7 +29,7 @@ export default function Home() {
             Each reaction widget needs its own <code>FeedValueProvider</code> with a reaction-type widget ID.
           </p>
           <FeedValueProvider
-            widgetId="442399c8-10e6-4207-a160-0566229ad173"
+            widgetId="fb06a5f9-52bc-4a49-90fe-deccef8503bd"
             apiBaseUrl={process.env.NEXT_PUBLIC_FEEDVALUE_API_URL}
             config={{ debug: true }}
             headless

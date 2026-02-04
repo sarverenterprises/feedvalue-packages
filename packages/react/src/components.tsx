@@ -359,7 +359,7 @@ function ReactionButtonsInner({
             style={defaultStyles.input}
             disabled={isSubmitting}
           />
-          <div style={{ display: 'flex', gap: '8px' }}>
+          <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
             <button
               type="submit"
               style={{
