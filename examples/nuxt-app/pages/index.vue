@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import FeedbackButton from '~/components/FeedbackButton.vue';
 import HeadlessDemo from '~/components/HeadlessDemo.vue';
+import InlineReactions from '~/components/InlineReactions.vue';
 </script>
 
 <template>
@@ -21,6 +22,15 @@ import HeadlessDemo from '~/components/HeadlessDemo.vue';
       </section>
 
       <section class="section">
+        <h2>Inline Reactions</h2>
+        <p>
+          Use <code>ReactionButtons</code> for inline feedback like "Was this helpful?".
+          Pass a reaction-type widget ID directly to the component.
+        </p>
+        <InlineReactions />
+      </section>
+
+      <section class="section">
         <h2>Headless Mode</h2>
         <p>
           For complete UI control, use headless mode. The SDK provides all API methods
@@ -34,6 +44,7 @@ import HeadlessDemo from '~/components/HeadlessDemo.vue';
         <ul class="list">
           <li>createFeedValue plugin setup in Nuxt</li>
           <li>useFeedValue composable for modal control</li>
+          <li>Inline ReactionButtons for quick feedback</li>
           <li>Headless mode with custom UI</li>
           <li>User identification with identify()</li>
           <li>Programmatic submission with submit()</li>
