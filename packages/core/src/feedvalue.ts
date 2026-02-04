@@ -231,11 +231,25 @@ export class FeedValue implements FeedValueInstance {
         ...(configResponse.config.options && { options: configResponse.config.options }),
         followUpLabel: configResponse.config.followUpLabel ?? 'Tell us more (optional)',
         submitText: configResponse.config.submitText ?? 'Send',
-        // Reaction widget display options
-        ...(configResponse.config.showLabels !== undefined && { showLabels: configResponse.config.showLabels }),
-        ...(configResponse.config.buttonSize && { buttonSize: configResponse.config.buttonSize }),
-        ...(configResponse.config.followUpTrigger && { followUpTrigger: configResponse.config.followUpTrigger }),
+        // Reaction widget display options (support both camelCase and snake_case from API)
+        ...((configResponse.config.showLabels !== undefined || (configResponse.config as any).show_labels !== undefined) && {
+          showLabels: configResponse.config.showLabels ?? (configResponse.config as any).show_labels,
+        }),
+        ...((configResponse.config.buttonSize || (configResponse.config as any).button_size) && {
+          buttonSize: configResponse.config.buttonSize ?? (configResponse.config as any).button_size,
+        }),
+        ...((configResponse.config.followUpTrigger || (configResponse.config as any).follow_up_trigger) && {
+          followUpTrigger: configResponse.config.followUpTrigger ?? (configResponse.config as any).follow_up_trigger,
+        }),
       };
+
+      // Debug: log built config
+      this.log('Built baseConfig:', {
+        buttonSize: baseConfig.buttonSize,
+        showLabels: baseConfig.showLabels,
+        followUpTrigger: baseConfig.followUpTrigger,
+        template: baseConfig.template,
+      });
 
       this.widgetConfig = {
         widgetId: configResponse.widget_id,
@@ -246,14 +260,14 @@ export class FeedValue implements FeedValueInstance {
         styling: {
           // Pass through all styling properties from API
           ...configResponse.styling,
-          // Apply defaults for required fields
-          primaryColor: configResponse.styling.primaryColor ?? '#3b82f6',
-          backgroundColor: configResponse.styling.backgroundColor ?? '#ffffff',
-          textColor: configResponse.styling.textColor ?? '#1f2937',
-          buttonTextColor: configResponse.styling.buttonTextColor ?? '#ffffff',
-          borderColor: configResponse.styling.borderColor ?? '#e5e7eb',
-          borderWidth: configResponse.styling.borderWidth ?? '1',
-          borderRadius: configResponse.styling.borderRadius ?? '8px',
+          // Apply defaults for required fields (support both camelCase and snake_case from API)
+          primaryColor: configResponse.styling.primaryColor ?? (configResponse.styling as any).primary_color ?? '#3b82f6',
+          backgroundColor: configResponse.styling.backgroundColor ?? (configResponse.styling as any).background_color ?? '#ffffff',
+          textColor: configResponse.styling.textColor ?? (configResponse.styling as any).text_color ?? '#1f2937',
+          buttonTextColor: configResponse.styling.buttonTextColor ?? (configResponse.styling as any).button_text_color ?? '#ffffff',
+          borderColor: configResponse.styling.borderColor ?? (configResponse.styling as any).border_color ?? '#e5e7eb',
+          borderWidth: configResponse.styling.borderWidth ?? (configResponse.styling as any).border_width ?? '1',
+          borderRadius: configResponse.styling.borderRadius ?? (configResponse.styling as any).border_radius ?? '8px',
         },
       };
 
