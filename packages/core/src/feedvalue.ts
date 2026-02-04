@@ -226,11 +226,15 @@ export class FeedValue implements FeedValueInstance {
         thankYouMessage: configResponse.config.thankYouMessage ?? 'Thank you for your feedback!',
         showBranding: configResponse.config.showBranding ?? true,
         customFields: configResponse.config.customFields,
-        // Reaction config (for reaction widgets) - only include if defined
+        // Reaction config (for reaction widgets) - pass through all fields
         ...(configResponse.config.template && { template: configResponse.config.template }),
         ...(configResponse.config.options && { options: configResponse.config.options }),
         followUpLabel: configResponse.config.followUpLabel ?? 'Tell us more (optional)',
         submitText: configResponse.config.submitText ?? 'Send',
+        // Reaction widget display options
+        ...(configResponse.config.showLabels !== undefined && { showLabels: configResponse.config.showLabels }),
+        ...(configResponse.config.buttonSize && { buttonSize: configResponse.config.buttonSize }),
+        ...(configResponse.config.followUpTrigger && { followUpTrigger: configResponse.config.followUpTrigger }),
       };
 
       this.widgetConfig = {
@@ -247,6 +251,8 @@ export class FeedValue implements FeedValueInstance {
           backgroundColor: configResponse.styling.backgroundColor ?? '#ffffff',
           textColor: configResponse.styling.textColor ?? '#1f2937',
           buttonTextColor: configResponse.styling.buttonTextColor ?? '#ffffff',
+          borderColor: configResponse.styling.borderColor ?? '#e5e7eb',
+          borderWidth: configResponse.styling.borderWidth ?? '1',
           borderRadius: configResponse.styling.borderRadius ?? '8px',
         },
       };

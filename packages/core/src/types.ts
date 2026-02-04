@@ -56,6 +56,8 @@ export interface WidgetStyling {
   backgroundColor: string;
   textColor: string;
   buttonTextColor: string;
+  borderColor: string;
+  borderWidth: string;
   borderRadius: string;
   customCSS?: string | undefined;
 }
