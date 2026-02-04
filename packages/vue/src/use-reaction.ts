@@ -23,6 +23,7 @@ import {
   type ButtonSize,
   type FollowUpTrigger,
   type ReactionTemplate,
+  type ReactionStyling,
 } from '@feedvalue/core';
 import { FEEDVALUE_KEY, FEEDVALUE_OPTIONS_KEY } from './plugin';
 
@@ -58,6 +59,8 @@ export interface UseReactionReturn {
   followUpTrigger: ComputedRef<FollowUpTrigger>;
   /** Check if an option should show follow-up based on followUpTrigger */
   shouldShowFollowUp: (optionValue: string) => boolean;
+  /** Widget styling configuration */
+  styling: ComputedRef<ReactionStyling>;
 }
 
 /**
@@ -222,6 +225,43 @@ export function useReaction(widgetId?: string): UseReactionReturn {
     return reactionConfig.value?.template;
   });
 
+  // Computed: widget styling configuration
+  const styling = computed<ReactionStyling>(() => {
+    const defaultStyling: ReactionStyling = {
+      primaryColor: '#6366f1',
+      backgroundColor: '#ffffff',
+      textColor: '#111827',
+      buttonTextColor: '#4b5563',
+      borderColor: '#e5e7eb',
+      borderWidth: '1',
+      borderRadius: 'full',
+    };
+
+    if (!instance.value || !isReady.value) {
+      return defaultStyling;
+    }
+
+    // Access the widget config styling
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const widgetConfig = (instance.value as any)._widgetConfig;
+    if (!widgetConfig?.styling) {
+      return defaultStyling;
+    }
+
+    // Cast styling to access extended properties that may be present from API
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const widgetStyling = widgetConfig.styling as any;
+    return {
+      primaryColor: widgetStyling.primaryColor ?? defaultStyling.primaryColor,
+      backgroundColor: widgetStyling.backgroundColor ?? defaultStyling.backgroundColor,
+      textColor: widgetStyling.textColor ?? defaultStyling.textColor,
+      buttonTextColor: widgetStyling.buttonTextColor ?? defaultStyling.buttonTextColor,
+      borderColor: widgetStyling.borderColor ?? defaultStyling.borderColor,
+      borderWidth: widgetStyling.borderWidth ?? defaultStyling.borderWidth,
+      borderRadius: widgetStyling.borderRadius ?? defaultStyling.borderRadius,
+    };
+  });
+
   /**
    * Check if an option should show follow-up based on followUpTrigger
    */
@@ -291,5 +331,6 @@ export function useReaction(widgetId?: string): UseReactionReturn {
     buttonSize,
     followUpTrigger,
     shouldShowFollowUp,
+    styling,
   };
 }

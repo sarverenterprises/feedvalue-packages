@@ -9,7 +9,29 @@ import { defineComponent, ref, computed, h, type PropType } from 'vue';
 import { useReaction } from './use-reaction';
 import type { ReactionOption } from '@feedvalue/core';
 
-import type { ButtonSize } from '@feedvalue/core';
+import type { ButtonSize, ReactionBorderRadius, ReactionBorderWidth } from '@feedvalue/core';
+
+/**
+ * Border radius mapping from preset to CSS value
+ */
+const borderRadiusMap: Record<ReactionBorderRadius, string> = {
+  full: '9999px',
+  lg: '12px',
+  md: '8px',
+  sm: '4px',
+  none: '0px',
+};
+
+/**
+ * Border width mapping from preset to CSS value
+ */
+const borderWidthMap: Record<ReactionBorderWidth, string> = {
+  '0': '0px',
+  '1': '1px',
+  '2': '2px',
+  '3': '3px',
+  '4': '4px',
+};
 
 /**
  * Button size style variants
@@ -203,6 +225,7 @@ export const ReactionButtons = defineComponent({
       showLabels,
       buttonSize,
       shouldShowFollowUp,
+      styling,
     } = useReaction(props.widgetId);
 
     // Local state for follow-up input
@@ -264,11 +287,15 @@ export const ReactionButtons = defineComponent({
 
       // Render thank you message after submission
       if (submitted.value) {
+        const currentStyling = styling.value;
         return h(
           'div',
           {
             class: props.containerClass,
-            style: styles.thankYou,
+            style: {
+              ...styles.thankYou,
+              color: currentStyling.primaryColor ?? '#059669',
+            },
           },
           [
             h('span', props.thankYouMessage || 'Thanks for your feedback!'),
@@ -286,14 +313,19 @@ export const ReactionButtons = defineComponent({
         );
       }
 
-      // Build reaction buttons
+      // Build reaction buttons using styling from widget config
       const currentSizeStyles = sizeStyles[buttonSize.value] || sizeStyles.md;
+      const currentStyling = styling.value;
+      const borderRadius = borderRadiusMap[currentStyling.borderRadius ?? 'full'] ?? '9999px';
+      const borderWidth = borderWidthMap[currentStyling.borderWidth ?? '1'] ?? '1px';
+
       const buttonElements = options.value.map((option) => {
+        const isActive = showFollowUp.value === option.value;
         const children = [
           h('span', { style: { ...styles.icon, ...currentSizeStyles.icon }, 'aria-hidden': 'true' }, option.icon),
         ];
         if (showLabels.value) {
-          children.push(h('span', { style: currentSizeStyles.label }, option.label));
+          children.push(h('span', { style: { ...currentSizeStyles.label, color: currentStyling.buttonTextColor ?? '#4b5563' } }, option.label));
         }
 
         return h(
@@ -305,11 +337,18 @@ export const ReactionButtons = defineComponent({
             style: {
               ...styles.button,
               ...currentSizeStyles.button,
-              ...(showFollowUp.value === option.value ? styles.buttonActive : {}),
+              backgroundColor: currentStyling.backgroundColor ?? '#ffffff',
+              borderColor: isActive ? (currentStyling.primaryColor ?? '#6366f1') : (currentStyling.borderColor ?? '#e5e7eb'),
+              borderWidth: borderWidth,
+              borderRadius: borderRadius,
+              color: currentStyling.buttonTextColor ?? '#4b5563',
+              ...(isActive ? {
+                backgroundColor: `${currentStyling.primaryColor ?? '#6366f1'}10`,
+              } : {}),
               ...(isSubmitting.value ? styles.buttonDisabled : {}),
             },
             disabled: isSubmitting.value,
-            'aria-pressed': showFollowUp.value === option.value,
+            'aria-pressed': isActive,
             'aria-label': option.label,
             onClick: () => handleOptionClick(option),
           },
@@ -339,13 +378,15 @@ export const ReactionButtons = defineComponent({
                 followUpText.value = (e.target as HTMLInputElement).value;
               },
             }),
-            h('div', { style: styles.actions }, [
+            h('div', { style: { ...styles.actions, justifyContent: 'center' } }, [
               h(
                 'button',
                 {
                   type: 'submit',
                   style: {
                     ...styles.submitButton,
+                    backgroundColor: currentStyling.primaryColor ?? '#6366f1',
+                    borderRadius: borderRadius,
                     ...(isSubmitting.value ? styles.buttonDisabled : {}),
                   },
                   disabled: isSubmitting.value,
@@ -356,7 +397,13 @@ export const ReactionButtons = defineComponent({
                 'button',
                 {
                   type: 'button',
-                  style: styles.cancelButton,
+                  style: {
+                    ...styles.cancelButton,
+                    backgroundColor: currentStyling.backgroundColor ?? '#ffffff',
+                    color: currentStyling.buttonTextColor ?? '#6b7280',
+                    borderRadius: borderRadius,
+                    border: `${borderWidth} solid ${currentStyling.borderColor ?? '#e5e7eb'}`,
+                  },
                   disabled: isSubmitting.value,
                   onClick: cancelFollowUp,
                 },
