@@ -6,9 +6,12 @@ export default defineNuxtPlugin((nuxtApp) => {
   const runtimeConfig = useRuntimeConfig();
   const apiBaseUrl = runtimeConfig.public.feedvalueApiUrl as string | undefined;
 
+  console.log('[FeedValue Plugin] runtimeConfig.public:', runtimeConfig.public);
+  console.log('[FeedValue Plugin] apiBaseUrl:', apiBaseUrl, '| truthy:', !!apiBaseUrl);
+
   nuxtApp.vueApp.use(
     createFeedValue({
-      widgetId: '267c0c5d-4730-4e81-97dc-d3540fceb2e4',
+      widgetId: 'e2462c5d-5698-4c0b-ba0f-fc7013dca22c',
       // Only pass apiBaseUrl if explicitly set (non-empty), otherwise use SDK default
       ...(apiBaseUrl ? { apiBaseUrl } : {}),
       config: {

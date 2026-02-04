@@ -205,8 +205,8 @@ export function useReaction(widgetId?: string): UseReactionReturn {
   const reactionConfig = computed(() => {
     if (!instance.value || !isReady.value) return null;
     // Access the widget config which includes reaction config
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return (instance.value as any)._widgetConfig?.config ?? null;
+    const widgetConfig = instance.value.getWidgetConfig();
+    return widgetConfig?.config ?? null;
   });
 
   const showLabels = computed(() => {
@@ -241,9 +241,8 @@ export function useReaction(widgetId?: string): UseReactionReturn {
       return defaultStyling;
     }
 
-    // Access the widget config styling
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const widgetConfig = (instance.value as any)._widgetConfig;
+    // Access the widget config styling using public method
+    const widgetConfig = instance.value.getWidgetConfig();
     if (!widgetConfig?.styling) {
       return defaultStyling;
     }

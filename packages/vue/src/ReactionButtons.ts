@@ -9,7 +9,7 @@ import { defineComponent, ref, computed, h, type PropType } from 'vue';
 import { useReaction } from './use-reaction';
 import type { ReactionOption } from '@feedvalue/core';
 
-import type { ButtonSize, ReactionBorderRadius, ReactionBorderWidth } from '@feedvalue/core';
+import type { ButtonSize, ReactionBorderRadius } from '@feedvalue/core';
 
 /**
  * Border radius mapping from preset to CSS value
@@ -25,12 +25,15 @@ const borderRadiusMap: Record<ReactionBorderRadius, string> = {
 /**
  * Border width mapping from preset to CSS value
  */
-const borderWidthMap: Record<ReactionBorderWidth, string> = {
+const borderWidthMap: Record<string, string> = {
   '0': '0px',
   '1': '1px',
   '2': '2px',
   '3': '3px',
   '4': '4px',
+  thin: '1px',
+  medium: '2px',
+  thick: '3px',
 };
 
 /**
@@ -107,6 +110,7 @@ const styles = {
     borderRadius: '0.375rem',
     backgroundColor: '#ffffff',
     boxSizing: 'border-box' as const,
+    resize: 'none' as const,
   },
   actions: {
     display: 'flex',
@@ -204,11 +208,33 @@ export const ReactionButtons = defineComponent({
       type: String,
       default: '',
     },
+    /** Custom class for the follow-up form */
+    formClass: {
+      type: String,
+      default: '',
+    },
+    /** Custom class for the thank you message */
+    thankYouClass: {
+      type: String,
+      default: '',
+    },
+    /** Hide after submission (default: false) */
+    hideAfterSubmit: {
+      type: Boolean,
+      default: false,
+    },
+    /** Whether to show follow-up inline or not at all */
+    followUpMode: {
+      type: String as PropType<'inline' | 'none'>,
+      default: 'inline',
+    },
   },
 
   emits: {
     /** Emitted when a reaction is submitted */
     react: (value: string, _followUp?: string) => typeof value === 'string',
+    /** Emitted when an error occurs */
+    error: (_error: Error) => true,
   },
 
   setup(props, { emit }) {
@@ -226,10 +252,13 @@ export const ReactionButtons = defineComponent({
       buttonSize,
       shouldShowFollowUp,
       styling,
+      isReactionWidget,
     } = useReaction(props.widgetId);
 
     // Local state for follow-up input
     const followUpText = ref('');
+    // Hover state for buttons
+    const hoveredButton = ref<string | null>(null);
 
     // Get follow-up option
     const getFollowUpOption = computed<ReactionOption | null>(() => {
@@ -241,7 +270,7 @@ export const ReactionButtons = defineComponent({
      * Handle option click
      */
     const handleOptionClick = (option: ReactionOption) => {
-      if (shouldShowFollowUp(option.value)) {
+      if (props.followUpMode === 'inline' && shouldShowFollowUp(option.value)) {
         setShowFollowUp(option.value);
       } else {
         submitReaction(option.value);
@@ -252,11 +281,13 @@ export const ReactionButtons = defineComponent({
      * Submit reaction
      */
     const submitReaction = async (value: string, followUp?: string) => {
+      const trimmedFollowUp = followUp?.trim() || undefined;
       try {
-        await react(value, followUp);
-        emit('react', value, followUp);
-      } catch {
-        // Error is already set in state
+        await react(value, trimmedFollowUp);
+        emit('react', value, trimmedFollowUp);
+      } catch (err) {
+        const reactionError = err instanceof Error ? err : new Error(String(err));
+        emit('error', reactionError);
       }
     };
 
@@ -280,8 +311,13 @@ export const ReactionButtons = defineComponent({
     };
 
     return () => {
-      // Don't render if not ready or no options
-      if (!isReady.value || !options.value) {
+      // Don't render if not ready, not a reaction widget, or no options
+      if (!isReady.value || !isReactionWidget.value || !options.value) {
+        return null;
+      }
+
+      // Hide after submission if prop is set
+      if (submitted.value && props.hideAfterSubmit) {
         return null;
       }
 
@@ -291,8 +327,8 @@ export const ReactionButtons = defineComponent({
         return h(
           'div',
           {
-            class: props.containerClass,
-            style: {
+            class: props.thankYouClass || props.containerClass,
+            style: props.thankYouClass ? undefined : {
               ...styles.thankYou,
               color: currentStyling.primaryColor ?? '#059669',
             },
@@ -319,8 +355,10 @@ export const ReactionButtons = defineComponent({
       const borderRadius = borderRadiusMap[currentStyling.borderRadius ?? 'full'] ?? '9999px';
       const borderWidth = borderWidthMap[currentStyling.borderWidth ?? '1'] ?? '1px';
 
-      const buttonElements = options.value.map((option) => {
+      // Only show buttons when follow-up is not displayed
+      const buttonElements = !showFollowUp.value ? options.value.map((option) => {
         const isActive = showFollowUp.value === option.value;
+        const isHovered = hoveredButton.value === option.value;
         const children = [
           h('span', { style: { ...styles.icon, ...currentSizeStyles.icon }, 'aria-hidden': 'true' }, option.icon),
         ];
@@ -338,11 +376,12 @@ export const ReactionButtons = defineComponent({
               ...styles.button,
               ...currentSizeStyles.button,
               backgroundColor: currentStyling.backgroundColor ?? '#ffffff',
-              borderColor: isActive ? (currentStyling.primaryColor ?? '#6366f1') : (currentStyling.borderColor ?? '#e5e7eb'),
+              borderColor: isActive || isHovered ? (currentStyling.primaryColor ?? '#6366f1') : (currentStyling.borderColor ?? '#e5e7eb'),
               borderWidth: borderWidth,
               borderRadius: borderRadius,
+              borderStyle: 'solid',
               color: currentStyling.buttonTextColor ?? '#4b5563',
-              ...(isActive ? {
+              ...(isActive || isHovered ? {
                 backgroundColor: `${currentStyling.primaryColor ?? '#6366f1'}10`,
               } : {}),
               ...(isSubmitting.value ? styles.buttonDisabled : {}),
@@ -351,10 +390,12 @@ export const ReactionButtons = defineComponent({
             'aria-pressed': isActive,
             'aria-label': option.label,
             onClick: () => handleOptionClick(option),
+            onMouseenter: () => { hoveredButton.value = option.value; },
+            onMouseleave: () => { hoveredButton.value = null; },
           },
           children
         );
-      });
+      }) : [];
 
       // Build follow-up form if needed
       let followUpForm = null;
@@ -363,19 +404,20 @@ export const ReactionButtons = defineComponent({
         followUpForm = h(
           'form',
           {
-            style: styles.followUp,
+            class: props.formClass,
+            style: props.formClass ? undefined : styles.followUp,
             onSubmit: handleFollowUpSubmit,
           },
           [
-            h('input', {
-              type: 'text',
+            h('textarea', {
               style: styles.input,
               value: followUpText.value,
-              placeholder: followUpOption.followUpPlaceholder || 'Tell us more...',
+              placeholder: followUpOption.followUpPlaceholder || 'Tell us more (optional)',
               disabled: isSubmitting.value,
               maxlength: 500,
+              rows: 3,
               onInput: (e: Event) => {
-                followUpText.value = (e.target as HTMLInputElement).value;
+                followUpText.value = (e.target as HTMLTextAreaElement).value;
               },
             }),
             h('div', { style: { ...styles.actions, justifyContent: 'center' } }, [
@@ -434,10 +476,13 @@ export const ReactionButtons = defineComponent({
           'aria-label': 'Reaction buttons',
         },
         [
-          h('div', { style: styles.buttonGroup, role: 'radiogroup' }, buttonElements),
+          // Only render button group if there are buttons to show
+          buttonElements.length > 0
+            ? h('div', { style: styles.buttonGroup, role: 'radiogroup' }, buttonElements)
+            : null,
           followUpForm,
           errorElement,
-        ]
+        ].filter(Boolean)
       );
     };
   },
