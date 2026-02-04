@@ -10,7 +10,7 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_FEEDVALUE_API_URL;
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <FeedValueProvider
-      widgetId="267c0c5d-4730-4e81-97dc-d3540fceb2e4"
+      widgetId="e2462c5d-5698-4c0b-ba0f-fc7013dca22c"
       apiBaseUrl={API_BASE_URL}
       config={{ debug: true }}
       onReady={() => console.log('[FeedValue] Widget ready')}

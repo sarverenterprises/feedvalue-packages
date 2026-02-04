@@ -8,16 +8,26 @@
  */
 
 import { useCallback, useMemo, useState } from 'react';
-import type { ReactionOption, ReactionState, ReactionConfig, ButtonSize, FollowUpTrigger } from '@feedvalue/core';
+import type { ReactionOption, ReactionState, ReactionConfig, ButtonSize, FollowUpTrigger, ReactionStyling } from '@feedvalue/core';
 import { NEGATIVE_OPTIONS_MAP } from '@feedvalue/core';
 import { useFeedValue } from './provider';
+
+/**
+ * Options for the react function
+ */
+export interface ReactOptions {
+  /** Optional follow-up text */
+  followUp?: string | undefined;
+  /** Trigger element for context capture (pass event.currentTarget from click handler) */
+  triggerElement?: Element | null | undefined;
+}
 
 /**
  * Return type for useReaction hook
  */
 export interface UseReactionReturn extends ReactionState {
-  /** Submit a reaction */
-  react: (value: string, followUp?: string) => Promise<void>;
+  /** Submit a reaction with optional follow-up text and trigger element for context capture */
+  react: (value: string, options?: ReactOptions | string) => Promise<void>;
   /** Set which option is showing follow-up input */
   setShowFollowUp: (value: string | null) => void;
   /** Clear the submitted state to allow re-submission */
@@ -34,6 +44,8 @@ export interface UseReactionReturn extends ReactionState {
   followUpTrigger: FollowUpTrigger;
   /** Check if an option should show follow-up based on followUpTrigger */
   shouldShowFollowUp: (optionValue: string) => boolean;
+  /** Widget styling configuration */
+  styling: ReactionStyling;
 }
 
 /**
@@ -119,8 +131,8 @@ export function useReaction(): UseReactionReturn {
   const reactionConfig = useMemo<Partial<ReactionConfig> | null>(() => {
     if (!instance || !isReady) return null;
     // Access the widget config which includes reaction config
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return (instance as any)._widgetConfig?.config ?? null;
+    const widgetConfig = instance.getWidgetConfig();
+    return widgetConfig?.config ?? null;
   }, [instance, isReady]);
 
   // Extract config values with defaults
@@ -129,10 +141,43 @@ export function useReaction(): UseReactionReturn {
   const followUpTrigger: FollowUpTrigger = reactionConfig?.followUpTrigger ?? 'negative';
   const template = reactionConfig?.template;
 
+  // Get styling from instance
+  const styling = useMemo<ReactionStyling>(() => {
+    const defaultStyling: ReactionStyling = {
+      primaryColor: '#6366f1',
+      backgroundColor: '#ffffff',
+      textColor: '#111827',
+      buttonTextColor: '#4b5563',
+      borderColor: '#e5e7eb',
+      borderWidth: '1',
+      borderRadius: 'full',
+    };
+
+    if (!instance || !isReady) {
+      return defaultStyling;
+    }
+    const widgetConfig = instance.getWidgetConfig();
+    if (!widgetConfig?.styling) {
+      return defaultStyling;
+    }
+    // Cast styling to access extended properties that may be present from API
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const widgetStyling = widgetConfig.styling as any;
+    return {
+      primaryColor: widgetStyling.primaryColor ?? defaultStyling.primaryColor,
+      backgroundColor: widgetStyling.backgroundColor ?? defaultStyling.backgroundColor,
+      textColor: widgetStyling.textColor ?? defaultStyling.textColor,
+      buttonTextColor: widgetStyling.buttonTextColor ?? defaultStyling.buttonTextColor,
+      borderColor: widgetStyling.borderColor ?? defaultStyling.borderColor,
+      borderWidth: widgetStyling.borderWidth ?? defaultStyling.borderWidth,
+      borderRadius: widgetStyling.borderRadius ?? defaultStyling.borderRadius,
+    };
+  }, [instance, isReady]);
+
   // Check if this is a reaction widget
   const isReactionWidget = useMemo(() => {
     return instance?.isReaction() ?? false;
-  }, [instance]);
+  }, [instance, isReady]);
 
   // Function to determine if follow-up should show for an option
   const shouldShowFollowUp = useCallback(
@@ -152,16 +197,24 @@ export function useReaction(): UseReactionReturn {
 
   // Submit reaction
   const react = useCallback(
-    async (value: string, followUp?: string) => {
+    async (value: string, options?: ReactOptions | string) => {
       if (!instance) {
         throw new Error('FeedValue not initialized');
       }
+
+      // Support legacy string parameter for backwards compatibility
+      const opts: ReactOptions = typeof options === 'string'
+        ? { followUp: options }
+        : options ?? {};
 
       setIsSubmitting(true);
       setError(null);
 
       try {
-        await instance.react(value, followUp ? { followUp } : undefined);
+        await instance.react(value, {
+          ...(opts.followUp && { followUp: opts.followUp }),
+          ...(opts.triggerElement && { triggerElement: opts.triggerElement }),
+        });
         setSubmitted(value);
         setShowFollowUp(null);
       } catch (err) {
@@ -196,5 +249,6 @@ export function useReaction(): UseReactionReturn {
     buttonSize,
     followUpTrigger,
     shouldShowFollowUp,
+    styling,
   };
 }

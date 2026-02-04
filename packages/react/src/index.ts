@@ -42,7 +42,7 @@ export {
 } from './provider';
 
 // Reaction hook
-export { useReaction, type UseReactionReturn } from './use-reaction';
+export { useReaction, type UseReactionReturn, type ReactOptions } from './use-reaction';
 
 // Standalone components
 export {
@@ -67,4 +67,7 @@ export type {
   ReactionData,
   ReactionState,
   WidgetType,
+  // Context capture types
+  ContextCaptureConfig,
+  CapturedContext,
 } from '@feedvalue/core';

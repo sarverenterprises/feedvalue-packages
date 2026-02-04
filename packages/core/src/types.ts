@@ -5,6 +5,8 @@
  * all framework packages (React, Vue) and the vanilla API.
  */
 
+import type { ContextCaptureConfig } from './context-capture';
+
 // ============================================================================
 // Configuration Types
 // ============================================================================
@@ -109,6 +111,14 @@ export interface FeedValueOptions {
    * @default false
    */
   headless?: boolean | undefined;
+  /**
+   * Context capture configuration for reaction widgets.
+   * When enabled, captures DOM context (section ID, nearest heading, data attributes)
+   * from the trigger element when react() is called.
+   *
+   * @default { enabled: true, maxDepth: 5, maxHeadingLength: 100, dataAttributeWhitelist: ['data-section', 'data-feature', 'data-component', 'data-fv-section', 'data-fv-feature'] }
+   */
+  contextCapture?: Partial<ContextCaptureConfig> | undefined;
 }
 
 /**
@@ -507,9 +517,9 @@ export interface FeedValueInstance {
   /**
    * Submit a reaction.
    * @param value - Selected reaction option value
-   * @param options - Optional follow-up text
+   * @param options - Optional follow-up text and trigger element for context capture
    */
-  react(value: string, options?: { followUp?: string }): Promise<void>;
+  react(value: string, options?: { followUp?: string; triggerElement?: Element | null }): Promise<void>;
   /**
    * Check if widget is a reaction type
    */

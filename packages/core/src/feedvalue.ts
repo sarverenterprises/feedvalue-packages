@@ -27,6 +27,12 @@ import type {
 import { TypedEventEmitter } from './event-emitter';
 import { ApiClient, DEFAULT_API_BASE_URL } from './api-client';
 import { generateFingerprint } from './fingerprint';
+import {
+  captureContext,
+  type CapturedContext,
+  type ContextCaptureConfig,
+  DEFAULT_CONTEXT_CAPTURE_CONFIG,
+} from './context-capture';
 
 /** Delay before auto-closing the success message (milliseconds) */
 const SUCCESS_AUTO_CLOSE_DELAY_MS = 3000;
@@ -88,6 +94,7 @@ export class FeedValue implements FeedValueInstance {
   private readonly apiClient: ApiClient;
   private readonly emitter: TypedEventEmitter;
   private readonly headless: boolean;
+  private readonly contextCaptureConfig: ContextCaptureConfig;
   private config: FeedValueConfig;
   private widgetConfig: WidgetConfig | null = null;
 
@@ -129,6 +136,10 @@ export class FeedValue implements FeedValueInstance {
     this.widgetId = options.widgetId;
     this.headless = options.headless ?? false;
     this.config = { ...DEFAULT_CONFIG, ...options.config };
+    this.contextCaptureConfig = {
+      ...DEFAULT_CONTEXT_CAPTURE_CONFIG,
+      ...options.contextCapture,
+    };
 
     this.apiClient = new ApiClient(
       options.apiBaseUrl ?? DEFAULT_API_BASE_URL,
@@ -229,12 +240,14 @@ export class FeedValue implements FeedValueInstance {
         type: configResponse.type ?? 'feedback',
         config: baseConfig,
         styling: {
+          // Pass through all styling properties from API
+          ...configResponse.styling,
+          // Apply defaults for required fields
           primaryColor: configResponse.styling.primaryColor ?? '#3b82f6',
           backgroundColor: configResponse.styling.backgroundColor ?? '#ffffff',
           textColor: configResponse.styling.textColor ?? '#1f2937',
           buttonTextColor: configResponse.styling.buttonTextColor ?? '#ffffff',
           borderRadius: configResponse.styling.borderRadius ?? '8px',
-          customCSS: configResponse.styling.customCSS,
         },
       };
 
@@ -552,12 +565,12 @@ export class FeedValue implements FeedValueInstance {
   private getTemplateOptions(template: string): ReactionOption[] {
     const templates: Record<string, ReactionOption[]> = {
       thumbs: [
-        { label: 'Helpful', value: 'helpful', icon: 'thumbs-up', showFollowUp: false },
-        { label: 'Not Helpful', value: 'not_helpful', icon: 'thumbs-down', showFollowUp: true },
+        { label: 'Helpful', value: 'helpful', icon: '👍', showFollowUp: false },
+        { label: 'Not Helpful', value: 'not_helpful', icon: '👎', showFollowUp: true },
       ],
       helpful: [
-        { label: 'Yes', value: 'yes', icon: 'check', showFollowUp: false },
-        { label: 'No', value: 'no', icon: 'x', showFollowUp: true },
+        { label: 'Yes', value: 'yes', icon: '✓', showFollowUp: false },
+        { label: 'No', value: 'no', icon: '✗', showFollowUp: true },
       ],
       emoji: [
         { label: 'Angry', value: 'angry', icon: '😠', showFollowUp: true },
@@ -581,9 +594,9 @@ export class FeedValue implements FeedValueInstance {
   /**
    * Submit a reaction.
    * @param value - Selected reaction option value
-   * @param options - Optional follow-up text
+   * @param options - Optional follow-up text and trigger element for context capture
    */
-  async react(value: string, options?: { followUp?: string }): Promise<void> {
+  async react(value: string, options?: { followUp?: string; triggerElement?: Element | null }): Promise<void> {
     if (!this.state.isReady) {
       throw new Error('Widget not ready');
     }
@@ -604,6 +617,13 @@ export class FeedValue implements FeedValueInstance {
       throw new Error(`Invalid reaction value. Must be one of: ${validValues}`);
     }
 
+    // Capture DOM context if trigger element provided
+    let capturedContext: CapturedContext | null = null;
+    if (options?.triggerElement) {
+      capturedContext = captureContext(options.triggerElement, this.contextCaptureConfig);
+      this.log('Captured context', capturedContext);
+    }
+
     // Emit react event (before submission)
     this.emitter.emit('react', { value, hasFollowUp: selectedOption.showFollowUp });
 
@@ -614,6 +634,13 @@ export class FeedValue implements FeedValueInstance {
         value,
         metadata: {
           page_url: typeof window !== 'undefined' ? window.location.href : '',
+          // Spread captured context into metadata
+          ...(capturedContext?.sectionId && { section_id: capturedContext.sectionId }),
+          ...(capturedContext?.sectionTag && { section_tag: capturedContext.sectionTag }),
+          ...(capturedContext?.nearestHeading && { nearest_heading: capturedContext.nearestHeading }),
+          ...(capturedContext?.headingLevel && { heading_level: capturedContext.headingLevel }),
+          ...(capturedContext?.dataAttributes && { data_attributes: capturedContext.dataAttributes }),
+          ...(capturedContext?.cssSelector && { css_selector: capturedContext.cssSelector }),
         },
         ...(options?.followUp && { followUp: options.followUp }),
       };
