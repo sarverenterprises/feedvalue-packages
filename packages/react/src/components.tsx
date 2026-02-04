@@ -362,7 +362,11 @@ function ReactionButtonsInner({
           <div style={{ display: 'flex', gap: '8px' }}>
             <button
               type="submit"
-              style={{ ...defaultStyles.submitButton, background: styling.primaryColor ?? '#6366f1' }}
+              style={{
+                ...defaultStyles.submitButton,
+                background: styling.primaryColor ?? '#6366f1',
+                borderRadius: borderRadiusMap[styling.borderRadius ?? 'full'] ?? '9999px',
+              }}
               disabled={isSubmitting}
             >
               {isSubmitting ? 'Sending...' : 'Send'}
@@ -370,7 +374,15 @@ function ReactionButtonsInner({
             <button
               type="button"
               onClick={handleCancelFollowUp}
-              style={{ ...defaultStyles.button, padding: '8px 16px', borderRadius: borderRadiusMap[styling.borderRadius ?? 'full'] ?? '9999px' }}
+              style={{
+                ...defaultStyles.button,
+                padding: '8px 16px',
+                borderRadius: borderRadiusMap[styling.borderRadius ?? 'full'] ?? '9999px',
+                backgroundColor: styling.backgroundColor ?? '#ffffff',
+                color: styling.buttonTextColor ?? '#1f2937',
+                borderWidth: borderWidthMap[styling.borderWidth ?? '1'] ?? '1px',
+                borderColor: styling.borderColor ?? '#e5e7eb',
+              }}
               disabled={isSubmitting}
             >
               Cancel
