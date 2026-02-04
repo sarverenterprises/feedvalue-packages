@@ -544,6 +544,8 @@ export interface FeedValueInstance {
   setConfig(config: Partial<FeedValueConfig>): void;
   /** Get current configuration */
   getConfig(): FeedValueConfig;
+  /** Get widget configuration (from API) */
+  getWidgetConfig(): WidgetConfig | null;
 
   // Framework Integration (for React useSyncExternalStore, Vue reactivity)
   /** Subscribe to state changes */
