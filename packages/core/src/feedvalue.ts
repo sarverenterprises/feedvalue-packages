@@ -122,6 +122,9 @@ export class FeedValue implements FeedValueInstance {
   private overlay: HTMLElement | null = null;
   private stylesInjected = false;
 
+  // Viewport resize compensation cleanup
+  private viewportResizeCleanup: (() => void) | null = null;
+
   // Auto-close timeout reference (for cleanup on destroy)
   private autoCloseTimeout: ReturnType<typeof setTimeout> | null = null;
 
@@ -304,6 +307,10 @@ export class FeedValue implements FeedValueInstance {
       clearTimeout(this.autoCloseTimeout);
       this.autoCloseTimeout = null;
     }
+
+    // Clean up viewport resize handler
+    this.viewportResizeCleanup?.();
+    this.viewportResizeCleanup = null;
 
     // Remove DOM elements
     this.triggerButton?.remove();
@@ -853,6 +860,9 @@ export class FeedValue implements FeedValueInstance {
 
     // Create modal
     this.renderModal();
+
+    // Compensate for mobile browser toolbar resize jumps
+    this.setupViewportCompensation();
   }
 
   /**
@@ -1070,7 +1080,7 @@ export class FeedValue implements FeedValueInstance {
   private getPositionStyles(position: string): string {
     switch (position) {
       case 'bottom-left':
-        return 'bottom: 20px; left: 20px;';
+        return 'bottom: calc(20px + env(safe-area-inset-bottom, 0px)); left: 20px;';
       case 'top-right':
         return 'top: 20px; right: 20px;';
       case 'top-left':
@@ -1079,7 +1089,7 @@ export class FeedValue implements FeedValueInstance {
         return 'top: 50%; left: 50%; transform: translate(-50%, -50%);';
       case 'bottom-right':
       default:
-        return 'bottom: 20px; right: 20px;';
+        return 'bottom: calc(20px + env(safe-area-inset-bottom, 0px)); right: 20px;';
     }
   }
 
@@ -1089,9 +1099,9 @@ export class FeedValue implements FeedValueInstance {
   private getModalPositionStyles(position: string): string {
     switch (position) {
       case 'bottom-left':
-        return 'bottom: 20px; left: 20px;';
+        return 'bottom: calc(20px + env(safe-area-inset-bottom, 0px)); left: 20px;';
       case 'bottom-right':
-        return 'bottom: 20px; right: 20px;';
+        return 'bottom: calc(20px + env(safe-area-inset-bottom, 0px)); right: 20px;';
       case 'top-right':
         return 'top: 20px; right: 20px;';
       case 'top-left':
@@ -1103,8 +1113,47 @@ export class FeedValue implements FeedValueInstance {
   }
 
   /**
-   * SVG icons for trigger button (matching widget-bundle exactly)
+   * Smooth viewport resize compensation for mobile browser toolbar show/hide.
+   *
+   * When Chrome/Safari's bottom toolbar appears or disappears, the layout viewport
+   * resizes and position:fixed elements jump. This detects toolbar-sized height
+   * changes and applies an inverse CSS translate to cancel the jump, then animates
+   * back to the natural position. Uses the `translate` CSS property (separate from
+   * `transform`) to avoid conflicting with the hover transform on the trigger.
    */
+  private setupViewportCompensation(): void {
+    if (typeof window === 'undefined') return;
+
+    let lastHeight = window.innerHeight;
+
+    const handleResize = () => {
+      const newHeight = window.innerHeight;
+      const delta = newHeight - lastHeight;
+      lastHeight = newHeight;
+
+      // Only compensate for toolbar-sized changes (5–120px)
+      if (Math.abs(delta) <= 5 || Math.abs(delta) >= 120) return;
+
+      const elements = [this.triggerButton, this.modal].filter(Boolean) as HTMLElement[];
+
+      for (const el of elements) {
+        // Instantly offset to cancel the visual jump
+        el.style.transition = 'none';
+        el.style.translate = `0 ${delta}px`;
+        // Force reflow, then animate to natural position
+        void el.offsetHeight;
+        el.style.transition = 'translate 0.3s ease-out';
+        el.style.translate = '0 0';
+      }
+    };
+
+    window.addEventListener('resize', handleResize, { passive: true });
+
+    this.viewportResizeCleanup = () => {
+      window.removeEventListener('resize', handleResize);
+    };
+  }
+
   /**
    * SVG icons for trigger button - must match Lucide icons used in frontend-web
    * chat = MessageCircle, message = MessageSquare, feedback = MessagesSquare,
