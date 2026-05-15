@@ -650,6 +650,55 @@ describe('FeedValue', () => {
       expect(document.querySelector('.fv-widget-trigger')).toBeNull();
       expect(document.querySelector('.fv-widget-modal')).toBeNull();
     });
+
+    it('should abort DOM listeners on destroy', async () => {
+      const instance = FeedValue.init({ widgetId: 'test-widget-123' });
+
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      const trigger = document.querySelector('.fv-widget-trigger') as HTMLElement;
+      const overlay = document.querySelector('.fv-widget-overlay') as HTMLElement;
+      const closeButton = document.querySelector('.fv-widget-close') as HTMLElement;
+      const form = document.querySelector('.fv-widget-form') as HTMLFormElement;
+
+      expect(trigger).not.toBeNull();
+      expect(overlay).not.toBeNull();
+      expect(closeButton).not.toBeNull();
+      expect(form).not.toBeNull();
+
+      instance.destroy();
+
+      const openSpy = vi.spyOn(instance, 'open');
+      const closeSpy = vi.spyOn(instance, 'close');
+
+      trigger.click();
+      overlay.click();
+      closeButton.click();
+      const submitWasNotPrevented = form.dispatchEvent(
+        new Event('submit', { bubbles: true, cancelable: true })
+      );
+
+      expect(openSpy).not.toHaveBeenCalled();
+      expect(closeSpy).not.toHaveBeenCalled();
+      expect(submitWasNotPrevented).toBe(true);
+    });
+
+    it('should not require document during destroy', async () => {
+      const originalDocument = globalThis.document;
+      const instance = FeedValue.init({
+        widgetId: 'test-widget-123',
+        headless: true,
+      });
+
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      vi.stubGlobal('document', undefined);
+
+      expect(() => instance.destroy()).not.toThrow();
+      expect(FeedValue.getInstance('test-widget-123')).toBeUndefined();
+
+      vi.stubGlobal('document', originalDocument);
+    });
   });
 
   describe('initialization failure', () => {
