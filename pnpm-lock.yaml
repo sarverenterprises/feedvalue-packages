@@ -63,10 +63,6 @@ importers:
       vue:
         specifier: ^3.5.27
         version: 3.5.27(typescript@5.9.3)
-    optionalDependencies:
-      '@oxc-parser/binding-linux-x64-gnu':
-        specifier: 0.110.0
-        version: 0.110.0
     devDependencies:
       typescript:
         specifier: ^5.9.3
