@@ -128,6 +128,10 @@ export class FeedValue implements FeedValueInstance {
   // Auto-close timeout reference (for cleanup on destroy)
   private autoCloseTimeout: ReturnType<typeof setTimeout> | null = null;
 
+  // DOM event listeners are registered through this controller so destroy()
+  // removes handlers even if callers keep references to detached elements.
+  private readonly domEventController = new AbortController();
+
   // Destroyed flag - guards async continuations (fixes React StrictMode race condition)
   private isDestroyed = false;
 
@@ -312,12 +316,17 @@ export class FeedValue implements FeedValueInstance {
     this.viewportResizeCleanup?.();
     this.viewportResizeCleanup = null;
 
+    // Remove all DOM event listeners registered by this instance
+    this.domEventController.abort();
+
     // Remove DOM elements
     this.triggerButton?.remove();
     this.modal?.remove();
     this.overlay?.remove();
-    document.getElementById('fv-widget-styles')?.remove();
-    document.getElementById('fv-widget-custom-styles')?.remove();
+    if (typeof document !== 'undefined') {
+      document.getElementById('fv-widget-styles')?.remove();
+      document.getElementById('fv-widget-custom-styles')?.remove();
+    }
 
     // Clear references
     this.triggerButton = null;
@@ -1224,7 +1233,9 @@ export class FeedValue implements FeedValueInstance {
       this.triggerButton.textContent = triggerText || 'Feedback';
     }
 
-    this.triggerButton.addEventListener('click', () => this.open());
+    this.triggerButton.addEventListener('click', () => this.open(), {
+      signal: this.domEventController.signal,
+    });
     document.body.appendChild(this.triggerButton);
   }
 
@@ -1239,7 +1250,9 @@ export class FeedValue implements FeedValueInstance {
     // Overlay
     this.overlay = document.createElement('div');
     this.overlay.className = 'fv-widget-overlay';
-    this.overlay.addEventListener('click', () => this.close());
+    this.overlay.addEventListener('click', () => this.close(), {
+      signal: this.domEventController.signal,
+    });
     document.body.appendChild(this.overlay);
 
     // Modal container
@@ -1259,7 +1272,9 @@ export class FeedValue implements FeedValueInstance {
     closeBtn.className = 'fv-widget-close';
     closeBtn.setAttribute('aria-label', 'Close');
     closeBtn.textContent = '×';
-    closeBtn.addEventListener('click', () => this.close());
+    closeBtn.addEventListener('click', () => this.close(), {
+      signal: this.domEventController.signal,
+    });
     header.appendChild(closeBtn);
 
     this.modal.appendChild(header);
@@ -1287,7 +1302,9 @@ export class FeedValue implements FeedValueInstance {
     errorDiv.id = 'fv-error-message';
     form.appendChild(errorDiv);
 
-    form.addEventListener('submit', (e) => this.handleFormSubmit(e));
+    form.addEventListener('submit', (e) => this.handleFormSubmit(e), {
+      signal: this.domEventController.signal,
+    });
     this.modal.appendChild(form);
 
     // Branding
@@ -1393,6 +1410,8 @@ export class FeedValue implements FeedValueInstance {
     closeBtn.addEventListener('click', () => {
       this.close();
       this.resetForm();
+    }, {
+      signal: this.domEventController.signal,
     });
     successDiv.appendChild(closeBtn);
 

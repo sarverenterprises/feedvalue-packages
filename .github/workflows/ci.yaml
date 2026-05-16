@@ -35,10 +35,14 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Build packages
-        run: pnpm build
+        run: pnpm -r --filter './packages/*' build
+
+      - name: Build examples
+        if: matrix.node-version != 18
+        run: pnpm -r --filter './examples/*' build
 
       - name: Run tests
-        run: pnpm test
+        run: pnpm -r --filter './packages/*' test
 
       - name: Type check
         run: pnpm typecheck
