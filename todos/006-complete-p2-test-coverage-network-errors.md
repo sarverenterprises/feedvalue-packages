@@ -1,7 +1,7 @@
 # Test Gap: Network Error Handling Not Tested
 
 ---
-status: pending
+status: completed
 priority: p2
 issue_id: "006"
 tags: [code-review, testing, api-client]
@@ -95,11 +95,11 @@ it('should refresh cache after TTL expires', async () => {
 
 ## Acceptance Criteria
 
-- [ ] Network failure test added
-- [ ] Abort/timeout test added
-- [ ] Token refresh retry test added
-- [ ] Cache TTL expiration test added
-- [ ] All tests pass
+- [x] Network failure test added
+- [x] Abort/timeout test added
+- [x] Token refresh retry test added
+- [x] Cache TTL expiration test added
+- [x] All tests pass
 
 ## Work Log
 

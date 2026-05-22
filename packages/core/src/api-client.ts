@@ -26,6 +26,12 @@ interface CacheEntry<T> {
   expiresAt: number;
 }
 
+type FeedbackRequestBody = {
+  message: string;
+  metadata?: Record<string, unknown> | undefined;
+  customFieldValues?: Record<string, string> | undefined;
+};
+
 /**
  * API client for FeedValue
  */
@@ -219,25 +225,12 @@ export class ApiClient {
 
     this.log('Submitting feedback', { widgetId });
 
-    // Merge user data into metadata (core-api stores metadata, not separate user field)
-    // User data from identify()/setData() goes into metadata.user
-    const mergedMetadata = {
-      ...feedback.metadata,
-      ...(userData && Object.keys(userData).length > 0 && {
-        user: userData,
-      }),
-    };
+    const body = this.buildFeedbackRequestBody(feedback, userData);
 
     const response = await fetch(url, {
       method: 'POST',
       headers,
-      body: JSON.stringify({
-        message: feedback.message,
-        metadata: Object.keys(mergedMetadata).length > 0 ? mergedMetadata : undefined,
-        ...(feedback.customFieldValues && {
-          customFieldValues: feedback.customFieldValues,
-        }),
-      }),
+      body: JSON.stringify(body),
     });
 
     // Handle rate limiting
@@ -267,20 +260,14 @@ export class ApiClient {
 
         if (this.submissionToken) {
           // Retry with new token
-          headers['X-Submission-Token'] = this.submissionToken;
+          const retryHeaders = {
+            ...headers,
+            'X-Submission-Token': this.submissionToken,
+          };
           const retryResponse = await fetch(url, {
             method: 'POST',
-            headers,
-            body: JSON.stringify({
-              message: feedback.message,
-              metadata: feedback.metadata,
-              ...(feedback.customFieldValues && {
-                customFieldValues: feedback.customFieldValues,
-              }),
-              ...(userData && Object.keys(userData).length > 0 && {
-                user: userData,
-              }),
-            }),
+            headers: retryHeaders,
+            body: JSON.stringify(body),
           });
 
           if (retryResponse.ok) {
@@ -306,6 +293,30 @@ export class ApiClient {
 
     this.log('Feedback submitted', { feedbackId: data.feedback_id });
     return data;
+  }
+
+  /**
+   * Build the feedback submission payload used for initial submit and token-refresh retry.
+   */
+  private buildFeedbackRequestBody(
+    feedback: FeedbackData,
+    userData?: SubmissionUserData
+  ): FeedbackRequestBody {
+    // core-api stores user data inside metadata, not as a separate top-level field.
+    const mergedMetadata: Record<string, unknown> = {
+      ...feedback.metadata,
+      ...(userData && Object.keys(userData).length > 0 && {
+        user: userData,
+      }),
+    };
+
+    return {
+      message: feedback.message,
+      metadata: Object.keys(mergedMetadata).length > 0 ? mergedMetadata : undefined,
+      ...(feedback.customFieldValues && {
+        customFieldValues: feedback.customFieldValues,
+      }),
+    };
   }
 
   /**

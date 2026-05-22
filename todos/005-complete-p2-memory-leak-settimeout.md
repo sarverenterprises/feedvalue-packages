@@ -1,7 +1,7 @@
 # Memory Leak: setTimeout in showSuccess Never Cancelled
 
 ---
-status: pending
+status: completed
 priority: p2
 issue_id: "005"
 tags: [code-review, performance, memory-leak]
@@ -78,10 +78,10 @@ Implement Option 1.
 
 ## Acceptance Criteria
 
-- [ ] Timeout is stored in instance property
-- [ ] Timeout is cleared on destroy()
-- [ ] Timeout is cleared if showSuccess is called again
-- [ ] No errors when navigating away before timeout completes
+- [x] Timeout is stored in instance property
+- [x] Timeout is cleared on destroy()
+- [x] Timeout is cleared if showSuccess is called again
+- [x] No errors when navigating away before timeout completes
 
 ## Work Log
 

@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { FeedValue } from './feedvalue';
+import type { EmojiSentiment, FeedbackMetadata } from './types';
 
 // Mock API responses
 const mockConfigResponse = {
@@ -423,7 +424,7 @@ describe('FeedValue', () => {
       await expect(
         instance.submit({
           message: 'Test feedback',
-          sentiment: 'invalid-sentiment' as any,
+          sentiment: 'invalid-sentiment' as unknown as EmojiSentiment,
         })
       ).rejects.toThrow('Invalid sentiment value. Must be one of: angry, disappointed, satisfied, excited');
     });
@@ -618,9 +619,35 @@ describe('FeedValue', () => {
           metadata: {
             page_url: 'https://example.com',
             custom_field: longValue,
-          } as any,
+          } as unknown as FeedbackMetadata,
         })
       ).rejects.toThrow('Metadata field "custom_field" exceeds maximum length of 1000 characters');
+    });
+
+    it('should reject non-string custom field values', async () => {
+      const instance = FeedValue.init({ widgetId: 'test-widget-123' });
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      await expect(
+        instance.submit({
+          message: 'Test feedback',
+          customFieldValues: {
+            impact: 5,
+          } as unknown as Record<string, string>,
+        })
+      ).rejects.toThrow('Custom field values must be strings');
+    });
+
+    it('should reject prototype-pollution custom field keys', async () => {
+      const instance = FeedValue.init({ widgetId: 'test-widget-123' });
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      await expect(
+        instance.submit({
+          message: 'Test feedback',
+          customFieldValues: JSON.parse('{"__proto__":"polluted"}') as Record<string, string>,
+        })
+      ).rejects.toThrow('Custom field key "__proto__" is not allowed');
     });
   });
 
@@ -633,6 +660,35 @@ describe('FeedValue', () => {
       instance.destroy();
 
       expect(FeedValue.getInstance('test-widget-123')).toBeUndefined();
+    });
+
+    it('should clear pending success auto-close timeout on destroy', async () => {
+      const clearTimeoutSpy = vi.spyOn(globalThis, 'clearTimeout');
+      mockFetch
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve(mockConfigResponse),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve({ feedback_id: 'fb-123' }),
+        });
+
+      const instance = FeedValue.init({ widgetId: 'test-widget-123' });
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      instance.open();
+      const textarea = document.getElementById('fv-feedback-content') as HTMLTextAreaElement;
+      const form = document.getElementById('fv-feedback-form') as HTMLFormElement;
+      textarea.value = 'Great product!';
+      form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      instance.destroy();
+
+      expect(clearTimeoutSpy).toHaveBeenCalled();
+      clearTimeoutSpy.mockRestore();
     });
 
     it('should remove DOM elements', async () => {

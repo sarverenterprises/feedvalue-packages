@@ -1,7 +1,7 @@
 # Code Quality: Magic Numbers Without Constants
 
 ---
-status: pending
+status: completed
 priority: p3
 issue_id: "016"
 tags: [code-review, quality, maintainability]
@@ -42,9 +42,9 @@ private static readonly CONFIG_CACHE_TTL_MS = 5 * 60 * 1000;
 
 ## Acceptance Criteria
 
-- [ ] All magic numbers replaced with named constants
-- [ ] Constants are well-named and documented
-- [ ] Tests still pass
+- [x] All magic numbers replaced with named constants
+- [x] Constants are well-named and documented
+- [x] Tests still pass
 
 ## Work Log
 

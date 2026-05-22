@@ -1,7 +1,7 @@
 # Simplification: Remove Unused Event Emitter Methods
 
 ---
-status: pending
+status: completed
 priority: p3
 issue_id: "014"
 tags: [code-review, simplification, cleanup]
@@ -33,9 +33,9 @@ Delete `hasListeners()` and `listenerCount()` methods.
 
 ## Acceptance Criteria
 
-- [ ] Unused methods removed
-- [ ] Tests still pass
-- [ ] No external consumers of these methods
+- [x] Unused methods removed
+- [x] Tests still pass
+- [x] No external consumers of these methods
 
 ## Work Log
 
