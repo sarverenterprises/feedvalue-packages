@@ -1,7 +1,13 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
-import { FeedValueProvider, useFeedValue, useFeedValueOptional } from './provider';
-import { FeedValue } from '@feedvalue/core';
+import { useEffect } from 'react';
+import { render, screen, waitFor } from '@testing-library/react';
+import {
+  FeedValueProvider,
+  useFeedValue,
+  useFeedValueOptional,
+  type FeedValueContextValue,
+} from './provider';
+import { FeedValue, type UserTraits } from '@feedvalue/core';
 
 // Test component that uses optional hook
 function OptionalConsumer() {
@@ -30,20 +36,13 @@ function RequiredConsumer() {
 describe('FeedValueProvider', () => {
   beforeEach(() => {
     // Mock fetch globally
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve({
-        widget_id: 'test-widget-123',
-        app_id: 'test-app',
-        submission_token: 'token',
-        token_expires_at: Math.floor(Date.now() / 1000) + 3600,
-        config: { position: 'bottom-right', formTitle: 'Feedback' },
-        styling: { primaryColor: '#000' },
-        allowed_origins: ['*'],
-      }),
-    }));
+    vi.stubGlobal('fetch', vi.fn().mockReturnValue(new Promise(() => {})));
 
     vi.stubGlobal('crypto', {
+      getRandomValues: vi.fn((array: Uint8Array) => {
+        array.fill(1);
+        return array;
+      }),
       subtle: {
         digest: vi.fn().mockResolvedValue(new ArrayBuffer(32)),
       },
@@ -152,6 +151,83 @@ describe('FeedValueProvider', () => {
           </FeedValueProvider>
         );
       }).not.toThrow();
+    });
+
+    it('should keep context method references stable across provider re-renders', () => {
+      const seen: Array<Pick<
+        FeedValueContextValue,
+        'open' | 'close' | 'toggle' | 'show' | 'hide' | 'submit' | 'identify' | 'setData' | 'reset'
+      >> = [];
+
+      function MethodCapture({ marker }: { marker: string }) {
+        const context = useFeedValue();
+
+        useEffect(() => {
+          seen.push({
+            open: context.open,
+            close: context.close,
+            toggle: context.toggle,
+            show: context.show,
+            hide: context.hide,
+            submit: context.submit,
+            identify: context.identify,
+            setData: context.setData,
+            reset: context.reset,
+          });
+        }, [marker, context]);
+
+        return null;
+      }
+
+      const { rerender } = render(
+        <FeedValueProvider widgetId="test-widget-123">
+          <MethodCapture marker="first" />
+        </FeedValueProvider>
+      );
+
+      rerender(
+        <FeedValueProvider widgetId="test-widget-123">
+          <MethodCapture marker="second" />
+        </FeedValueProvider>
+      );
+
+      expect(seen.length).toBeGreaterThanOrEqual(2);
+      for (const methods of seen.slice(1)) {
+        expect(methods).toEqual(seen[0]);
+      }
+    });
+
+    it('should pass UserTraits through identify', async () => {
+      let context: FeedValueContextValue | null = null;
+      const traits: UserTraits = {
+        name: 'Test User',
+        email: 'user@example.com',
+        plan: 'pro',
+        featureFlags: ['dashboard-v2'],
+      };
+
+      function ContextCapture() {
+        context = useFeedValue();
+        return null;
+      }
+
+      render(
+        <FeedValueProvider widgetId="test-widget-123" headless>
+          <ContextCapture />
+        </FeedValueProvider>
+      );
+
+      await waitFor(() => {
+        expect(FeedValue.getInstance('test-widget-123')).not.toBeNull();
+      });
+
+      context?.identify('user-123', traits);
+
+      const userData = FeedValue.getInstance('test-widget-123')?.getUserData();
+      expect(userData).toMatchObject({
+        userId: 'user-123',
+        traits,
+      });
     });
   });
 

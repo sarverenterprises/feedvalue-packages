@@ -105,13 +105,15 @@ export interface FeedValueProviderProps {
  * Server snapshot for SSR - always returns initial state
  * This prevents hydration mismatches
  */
-const getServerSnapshot = (): FeedValueState => ({
+const SERVER_SNAPSHOT: FeedValueState = {
   isReady: false,
   isOpen: false,
   isVisible: false,
   error: null,
   isSubmitting: false,
-});
+};
+
+const getServerSnapshot = (): FeedValueState => SERVER_SNAPSHOT;
 
 /**
  * FeedValueProvider component
@@ -194,16 +196,20 @@ export function FeedValueProvider({
     };
   }, [widgetId, apiBaseUrl, headless]); // Re-init if widgetId, apiBaseUrl, or headless changes
 
+  const subscribe = useCallback((callback: () => void) => {
+    const instance = instanceRef.current;
+    if (!instance) return () => {};
+    return instance.subscribe(callback);
+  }, []);
+  const getSnapshot = useCallback(
+    () => instanceRef.current?.getSnapshot() ?? getServerSnapshot(),
+    []
+  );
+
   // Use useSyncExternalStore for concurrent mode compatibility
   const state = useSyncExternalStore(
-    // Subscribe function
-    (callback) => {
-      const instance = instanceRef.current;
-      if (!instance) return () => {};
-      return instance.subscribe(callback);
-    },
-    // getSnapshot - client
-    () => instanceRef.current?.getSnapshot() ?? getServerSnapshot(),
+    subscribe,
+    getSnapshot,
     // getServerSnapshot - SSR
     getServerSnapshot
   );
@@ -249,7 +255,23 @@ export function FeedValueProvider({
       setData,
       reset,
     }),
-    [state, headless, open, close, toggle, show, hide, submit, identify, setData, reset]
+    [
+      state.isReady,
+      state.isOpen,
+      state.isVisible,
+      state.error,
+      state.isSubmitting,
+      headless,
+      open,
+      close,
+      toggle,
+      show,
+      hide,
+      submit,
+      identify,
+      setData,
+      reset,
+    ]
   );
 
   return (

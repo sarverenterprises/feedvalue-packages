@@ -192,17 +192,20 @@ Attach user context to feedback submissions. This data is **not shown in the wid
 <script setup>
 import { watch } from 'vue';
 import { useFeedValue } from '@feedvalue/vue';
+import type { UserTraits } from '@feedvalue/vue';
 
 const props = defineProps<{ user: User | null }>();
 const { identify, setData, reset } = useFeedValue();
 
 watch(() => props.user, (user) => {
   if (user) {
-    identify(user.id, {
+    const traits: UserTraits = {
       name: user.name,
       email: user.email,
       plan: user.plan,
-    });
+    };
+
+    identify(user.id, traits);
     setData({ company: user.company });
   } else {
     reset();
@@ -275,7 +278,7 @@ Composable to access FeedValue functionality.
 | `show` | `() => void` | Show trigger |
 | `hide` | `() => void` | Hide trigger |
 | `submit` | `(feedback) => Promise<void>` | Submit feedback |
-| `identify` | `(userId, traits?) => void` | Identify user |
+| `identify` | `(userId: string, traits?: UserTraits) => void` | Identify user |
 | `setData` | `(data) => void` | Set user data |
 | `reset` | `() => void` | Reset user data |
 

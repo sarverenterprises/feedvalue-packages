@@ -27,6 +27,51 @@ import {
 } from '@feedvalue/core';
 import { FEEDVALUE_KEY, FEEDVALUE_OPTIONS_KEY } from './plugin';
 
+type WidgetReactionStyling = Partial<Record<keyof ReactionStyling, string>>;
+type ReactionBorderWidthValue = NonNullable<ReactionStyling['borderWidth']>;
+type ReactionBorderRadiusValue = NonNullable<ReactionStyling['borderRadius']>;
+type ResolvedReactionStyling = {
+  primaryColor: string;
+  backgroundColor: string;
+  textColor: string;
+  buttonTextColor: string;
+  borderColor: string;
+  borderWidth: ReactionBorderWidthValue;
+  borderRadius: ReactionBorderRadiusValue;
+};
+
+function getReactionBorderWidth(
+  value: string | undefined,
+  fallback: ReactionBorderWidthValue
+): ReactionBorderWidthValue {
+  switch (value) {
+    case '0':
+    case '1':
+    case '2':
+    case '3':
+    case '4':
+      return value;
+    default:
+      return fallback;
+  }
+}
+
+function getReactionBorderRadius(
+  value: string | undefined,
+  fallback: ReactionBorderRadiusValue
+): ReactionBorderRadiusValue {
+  switch (value) {
+    case 'full':
+    case 'lg':
+    case 'md':
+    case 'sm':
+    case 'none':
+      return value;
+    default:
+      return fallback;
+  }
+}
+
 /**
  * Return type for useReaction composable
  */
@@ -227,7 +272,7 @@ export function useReaction(widgetId?: string): UseReactionReturn {
 
   // Computed: widget styling configuration
   const styling = computed<ReactionStyling>(() => {
-    const defaultStyling: ReactionStyling = {
+    const defaultStyling: ResolvedReactionStyling = {
       primaryColor: '#6366f1',
       backgroundColor: '#ffffff',
       textColor: '#111827',
@@ -247,17 +292,15 @@ export function useReaction(widgetId?: string): UseReactionReturn {
       return defaultStyling;
     }
 
-    // Cast styling to access extended properties that may be present from API
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const widgetStyling = widgetConfig.styling as any;
+    const widgetStyling: WidgetReactionStyling = widgetConfig.styling;
     return {
       primaryColor: widgetStyling.primaryColor ?? defaultStyling.primaryColor,
       backgroundColor: widgetStyling.backgroundColor ?? defaultStyling.backgroundColor,
       textColor: widgetStyling.textColor ?? defaultStyling.textColor,
       buttonTextColor: widgetStyling.buttonTextColor ?? defaultStyling.buttonTextColor,
       borderColor: widgetStyling.borderColor ?? defaultStyling.borderColor,
-      borderWidth: widgetStyling.borderWidth ?? defaultStyling.borderWidth,
-      borderRadius: widgetStyling.borderRadius ?? defaultStyling.borderRadius,
+      borderWidth: getReactionBorderWidth(widgetStyling.borderWidth, defaultStyling.borderWidth),
+      borderRadius: getReactionBorderRadius(widgetStyling.borderRadius, defaultStyling.borderRadius),
     };
   });
 

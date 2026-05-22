@@ -381,6 +381,76 @@ describe('ApiClient', () => {
         client.submitFeedback('test-widget', { message: 'Test feedback' })
       ).rejects.toThrow('Network request failed');
     });
+
+    it('should refresh cache after TTL expires', async () => {
+      const nowSpy = vi.spyOn(Date, 'now').mockReturnValue(1_000_000);
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve(mockConfigResponse),
+      });
+
+      await client.fetchConfig('test-widget');
+      await client.fetchConfig('test-widget');
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+
+      nowSpy.mockReturnValue(1_000_000 + 5 * 60 * 1000 + 1);
+
+      await client.fetchConfig('test-widget');
+      expect(mockFetch).toHaveBeenCalledTimes(2);
+
+      nowSpy.mockRestore();
+    });
+
+    it('should refresh token and retry feedback once on token 403', async () => {
+      mockFetch
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve(mockConfigResponse),
+        })
+        .mockResolvedValueOnce({
+          ok: false,
+          status: 403,
+          json: () => Promise.resolve({ detail: 'token expired' }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve({
+            ...mockConfigResponse,
+            submission_token: 'new-token',
+          }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve({ success: true, feedback_id: 'fb-123' }),
+        });
+
+      await client.fetchConfig('test-widget');
+
+      const result = await client.submitFeedback(
+        'test-widget',
+        {
+          message: 'Test feedback',
+          metadata: { page_url: 'https://example.com' },
+        },
+        { user_id: 'user-123' }
+      );
+
+      expect(result.feedback_id).toBe('fb-123');
+      expect(mockFetch).toHaveBeenCalledTimes(4);
+      expect(mockFetch.mock.calls[1][1]?.headers).toMatchObject({
+        'X-Submission-Token': 'test-token-abc',
+      });
+      expect(mockFetch.mock.calls[3][1]?.headers).toMatchObject({
+        'X-Submission-Token': 'new-token',
+      });
+      expect(JSON.parse(mockFetch.mock.calls[3][1]?.body as string)).toEqual({
+        message: 'Test feedback',
+        metadata: {
+          page_url: 'https://example.com',
+          user: { user_id: 'user-123' },
+        },
+      });
+    });
   });
 
   describe('clearCache()', () => {

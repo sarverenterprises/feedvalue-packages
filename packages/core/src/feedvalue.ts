@@ -23,6 +23,9 @@ import type {
   EmojiSentiment,
   SubmissionUserData,
   ReactionOption,
+  ReactionConfig,
+  WidgetUIConfig,
+  WidgetStyling,
 } from './types';
 import { TypedEventEmitter } from './event-emitter';
 import { ApiClient, DEFAULT_API_BASE_URL } from './api-client';
@@ -53,6 +56,13 @@ const MAX_MESSAGE_LENGTH = 10000;
 const MAX_METADATA_VALUE_LENGTH = 1000;
 
 /**
+ * Maximum allowed length for custom field and metadata keys.
+ */
+const MAX_FIELD_KEY_LENGTH = 100;
+
+const BLOCKED_OBJECT_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
+
+/**
  * Default configuration
  */
 const DEFAULT_CONFIG: FeedValueConfig = {
@@ -60,6 +70,22 @@ const DEFAULT_CONFIG: FeedValueConfig = {
   autoShow: true,
   debug: false,
   locale: 'en',
+};
+
+type ApiWidgetConfig = Partial<WidgetUIConfig & ReactionConfig> & {
+  show_labels?: boolean | undefined;
+  button_size?: ReactionConfig['buttonSize'] | undefined;
+  follow_up_trigger?: ReactionConfig['followUpTrigger'] | undefined;
+};
+
+type ApiWidgetStyling = Partial<WidgetStyling> & {
+  primary_color?: string | undefined;
+  background_color?: string | undefined;
+  text_color?: string | undefined;
+  button_text_color?: string | undefined;
+  border_color?: string | undefined;
+  border_width?: string | undefined;
+  border_radius?: string | undefined;
 };
 
 /**
@@ -223,32 +249,32 @@ export class FeedValue implements FeedValueInstance {
         return;
       }
 
+      const responseConfig = configResponse.config as ApiWidgetConfig;
+      const responseStyling = configResponse.styling as ApiWidgetStyling;
+      const showLabels = responseConfig.showLabels ?? responseConfig.show_labels;
+      const buttonSize = responseConfig.buttonSize ?? responseConfig.button_size;
+      const followUpTrigger = responseConfig.followUpTrigger ?? responseConfig.follow_up_trigger;
+
       // Build widget config
       const baseConfig = {
-        position: configResponse.config.position ?? 'bottom-right',
-        triggerText: configResponse.config.triggerText ?? 'Feedback',
-        triggerIcon: configResponse.config.triggerIcon ?? 'none',
-        formTitle: configResponse.config.formTitle ?? 'Share your feedback',
-        submitButtonText: configResponse.config.submitButtonText ?? 'Submit',
-        thankYouMessage: configResponse.config.thankYouMessage ?? 'Thank you for your feedback!',
-        showBranding: configResponse.config.showBranding ?? true,
-        customFields: configResponse.config.customFields,
+        position: responseConfig.position ?? 'bottom-right',
+        triggerText: responseConfig.triggerText ?? 'Feedback',
+        triggerIcon: responseConfig.triggerIcon ?? 'none',
+        formTitle: responseConfig.formTitle ?? 'Share your feedback',
+        submitButtonText: responseConfig.submitButtonText ?? 'Submit',
+        thankYouMessage: responseConfig.thankYouMessage ?? 'Thank you for your feedback!',
+        showBranding: responseConfig.showBranding ?? true,
+        ...(responseConfig.customFields && { customFields: responseConfig.customFields }),
         // Reaction config (for reaction widgets) - pass through all fields
-        ...(configResponse.config.template && { template: configResponse.config.template }),
-        ...(configResponse.config.options && { options: configResponse.config.options }),
-        followUpLabel: configResponse.config.followUpLabel ?? 'Tell us more (optional)',
-        submitText: configResponse.config.submitText ?? 'Send',
+        ...(responseConfig.template && { template: responseConfig.template }),
+        ...(responseConfig.options && { options: responseConfig.options }),
+        followUpLabel: responseConfig.followUpLabel ?? 'Tell us more (optional)',
+        submitText: responseConfig.submitText ?? 'Send',
         // Reaction widget display options (support both camelCase and snake_case from API)
-        ...((configResponse.config.showLabels !== undefined || (configResponse.config as any).show_labels !== undefined) && {
-          showLabels: configResponse.config.showLabels ?? (configResponse.config as any).show_labels,
-        }),
-        ...((configResponse.config.buttonSize || (configResponse.config as any).button_size) && {
-          buttonSize: configResponse.config.buttonSize ?? (configResponse.config as any).button_size,
-        }),
-        ...((configResponse.config.followUpTrigger || (configResponse.config as any).follow_up_trigger) && {
-          followUpTrigger: configResponse.config.followUpTrigger ?? (configResponse.config as any).follow_up_trigger,
-        }),
-      };
+        ...(showLabels !== undefined && { showLabels }),
+        ...(buttonSize && { buttonSize }),
+        ...(followUpTrigger && { followUpTrigger }),
+      } satisfies WidgetUIConfig & Partial<ReactionConfig>;
 
       // Debug: log built config
       this.log('Built baseConfig:', {
@@ -266,15 +292,15 @@ export class FeedValue implements FeedValueInstance {
         config: baseConfig,
         styling: {
           // Pass through all styling properties from API
-          ...configResponse.styling,
+          ...responseStyling,
           // Apply defaults for required fields (support both camelCase and snake_case from API)
-          primaryColor: configResponse.styling.primaryColor ?? (configResponse.styling as any).primary_color ?? '#3b82f6',
-          backgroundColor: configResponse.styling.backgroundColor ?? (configResponse.styling as any).background_color ?? '#ffffff',
-          textColor: configResponse.styling.textColor ?? (configResponse.styling as any).text_color ?? '#1f2937',
-          buttonTextColor: configResponse.styling.buttonTextColor ?? (configResponse.styling as any).button_text_color ?? '#ffffff',
-          borderColor: configResponse.styling.borderColor ?? (configResponse.styling as any).border_color ?? '#e5e7eb',
-          borderWidth: configResponse.styling.borderWidth ?? (configResponse.styling as any).border_width ?? '1',
-          borderRadius: configResponse.styling.borderRadius ?? (configResponse.styling as any).border_radius ?? '8px',
+          primaryColor: responseStyling.primaryColor ?? responseStyling.primary_color ?? '#3b82f6',
+          backgroundColor: responseStyling.backgroundColor ?? responseStyling.background_color ?? '#ffffff',
+          textColor: responseStyling.textColor ?? responseStyling.text_color ?? '#1f2937',
+          buttonTextColor: responseStyling.buttonTextColor ?? responseStyling.button_text_color ?? '#ffffff',
+          borderColor: responseStyling.borderColor ?? responseStyling.border_color ?? '#e5e7eb',
+          borderWidth: responseStyling.borderWidth ?? responseStyling.border_width ?? '1',
+          borderRadius: responseStyling.borderRadius ?? responseStyling.border_radius ?? '8px',
         },
       };
 
@@ -734,6 +760,7 @@ export class FeedValue implements FeedValueInstance {
     // Validate customFieldValues are string key-value pairs
     if (feedback.customFieldValues) {
       for (const [key, value] of Object.entries(feedback.customFieldValues)) {
+        this.validateObjectKey(key, 'Custom field');
         if (typeof key !== 'string' || typeof value !== 'string') {
           throw new Error('Custom field values must be strings');
         }
@@ -743,10 +770,20 @@ export class FeedValue implements FeedValueInstance {
     // Validate metadata field lengths
     if (feedback.metadata) {
       for (const [key, value] of Object.entries(feedback.metadata)) {
+        this.validateObjectKey(key, 'Metadata field');
         if (typeof value === 'string' && value.length > MAX_METADATA_VALUE_LENGTH) {
           throw new Error(`Metadata field "${key}" exceeds maximum length of ${MAX_METADATA_VALUE_LENGTH} characters`);
         }
       }
+    }
+  }
+
+  /**
+   * Validate user-controlled object keys before they are serialized.
+   */
+  private validateObjectKey(key: string, label: string): void {
+    if (!key || key.length > MAX_FIELD_KEY_LENGTH || BLOCKED_OBJECT_KEYS.has(key)) {
+      throw new Error(`${label} key "${key}" is not allowed`);
     }
   }
 

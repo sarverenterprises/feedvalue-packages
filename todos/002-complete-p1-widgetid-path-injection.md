@@ -1,7 +1,7 @@
 # Widget ID Path Traversal / Injection
 
 ---
-status: pending
+status: completed
 priority: p1
 issue_id: "002"
 tags: [code-review, security, input-validation]
@@ -77,10 +77,10 @@ Option 1 - Regex validation is cleaner and provides better error messages.
 
 ## Acceptance Criteria
 
-- [ ] widgetId is validated before use in URLs
-- [ ] Invalid IDs throw clear error messages
-- [ ] Path traversal attempts are blocked
-- [ ] Tests cover invalid input scenarios
+- [x] widgetId is validated before use in URLs
+- [x] Invalid IDs throw clear error messages
+- [x] Path traversal attempts are blocked
+- [x] Tests cover invalid input scenarios
 
 ## Work Log
 

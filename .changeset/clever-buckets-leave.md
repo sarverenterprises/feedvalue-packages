@@ -1,5 +1,7 @@
 ---
 "@feedvalue/core": patch
+"@feedvalue/react": patch
+"@feedvalue/vue": patch
 ---
 
-Abort DOM event listeners when widget instances are destroyed.
+Harden SDK request handling, validation, cleanup, and framework integration behavior.

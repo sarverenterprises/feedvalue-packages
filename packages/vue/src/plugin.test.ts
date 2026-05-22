@@ -8,20 +8,13 @@ import { FeedValue } from '@feedvalue/core';
 describe('createFeedValue Plugin', () => {
   beforeEach(() => {
     // Mock fetch
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve({
-        widget_id: 'test-widget-123',
-        app_id: 'test-app',
-        submission_token: 'token',
-        token_expires_at: Math.floor(Date.now() / 1000) + 3600,
-        config: { position: 'bottom-right', formTitle: 'Feedback' },
-        styling: { primaryColor: '#000' },
-        allowed_origins: ['*'],
-      }),
-    }));
+    vi.stubGlobal('fetch', vi.fn().mockReturnValue(new Promise(() => {})));
 
     vi.stubGlobal('crypto', {
+      getRandomValues: vi.fn((array: Uint8Array) => {
+        array.fill(1);
+        return array;
+      }),
       subtle: {
         digest: vi.fn().mockResolvedValue(new ArrayBuffer(32)),
       },
@@ -112,20 +105,13 @@ describe('createFeedValue Plugin', () => {
 
 describe('useFeedValue Composable', () => {
   beforeEach(() => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve({
-        widget_id: 'test-widget-123',
-        app_id: 'test-app',
-        submission_token: 'token',
-        token_expires_at: Math.floor(Date.now() / 1000) + 3600,
-        config: { position: 'bottom-right', formTitle: 'Feedback' },
-        styling: { primaryColor: '#000' },
-        allowed_origins: ['*'],
-      }),
-    }));
+    vi.stubGlobal('fetch', vi.fn().mockReturnValue(new Promise(() => {})));
 
     vi.stubGlobal('crypto', {
+      getRandomValues: vi.fn((array: Uint8Array) => {
+        array.fill(1);
+        return array;
+      }),
       subtle: {
         digest: vi.fn().mockResolvedValue(new ArrayBuffer(32)),
       },

@@ -1,7 +1,7 @@
 # Enhancement: Add once() and waitUntilReady() Methods
 
 ---
-status: pending
+status: completed
 priority: p3
 issue_id: "015"
 tags: [code-review, enhancement, agent-native]
@@ -52,10 +52,10 @@ async waitUntilReady(): Promise<void> {
 
 ## Acceptance Criteria
 
-- [ ] `once()` method added
-- [ ] `waitUntilReady()` method added
-- [ ] Tests cover new methods
-- [ ] Types exported
+- [x] `once()` method added
+- [x] `waitUntilReady()` method added
+- [x] Tests cover new methods
+- [x] Types exported
 
 ## Work Log
 
