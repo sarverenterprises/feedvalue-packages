@@ -1,5 +1,13 @@
 # @feedvalue/react
 
+## 0.1.16
+
+### Patch Changes
+
+- a435b16: Harden SDK request handling, validation, cleanup, and framework integration behavior.
+- Updated dependencies [a435b16]
+  - @feedvalue/core@0.1.16
+
 ## 0.1.6
 
 ### Patch Changes
