@@ -44,14 +44,43 @@ jobs:
       - name: Run tests
         run: pnpm test
 
+      - name: Detect pending changesets
+        id: pending_changesets
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if find .changeset -type f -name '*.md' ! -name 'README.md' -print -quit | grep -q .; then
+            echo "has_pending=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_pending=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Validate release PR token
+        if: steps.pending_changesets.outputs.has_pending == 'true'
+        env:
+          CHANGESETS_BOT_TOKEN: ${{ secrets.CHANGESETS_BOT_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [ -z "${CHANGESETS_BOT_TOKEN:-}" ]; then
+            printf '%s\n' \
+              'Pending changesets require the Release workflow to create or update a version PR.' \
+              'Configure the CHANGESETS_BOT_TOKEN repository secret with an approved bot token' \
+              'that can push branches and create pull requests before merging changesets.' >&2
+            exit 1
+          fi
+
       - name: Create Release Pull Request or Publish
         id: changesets
         uses: changesets/action@v1
         with:
           publish: pnpm release:oidc
-          version: pnpm version
+          version: pnpm run version
           title: 'chore: version packages'
           commit: 'chore: version packages'
+          commitMode: github-api
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.CHANGESETS_BOT_TOKEN || secrets.GITHUB_TOKEN }}
           NPM_CONFIG_PROVENANCE: true
