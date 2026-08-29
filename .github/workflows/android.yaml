@@ -46,12 +46,18 @@ jobs:
         run: ./gradlew test --no-daemon
 
       - name: Upload Test Results
-        uses: actions/upload-artifact@v4
-        if: always()
+        uses: sarverenterprises/ci-artifacts/upload@c14f99f2419e01acd895daec7c0aed2206ac0b87
+        # A fork pull request gets no organisation secrets, so skip the
+        # upload there instead of failing the job.
+        if: always() && vars.R2_CI_BUCKET != ''
         with:
           name: android-test-results
           path: packages/android/feedvalue/build/reports/tests/
-          retention-days: 7
+        env:
+          R2_CI_ACCESS_KEY_ID: ${{ secrets.R2_CI_ACCESS_KEY_ID }}
+          R2_CI_SECRET_ACCESS_KEY: ${{ secrets.R2_CI_SECRET_ACCESS_KEY }}
+          R2_CI_ENDPOINT: ${{ vars.R2_CI_ENDPOINT }}
+          R2_CI_BUCKET: ${{ vars.R2_CI_BUCKET }}
 
   lint:
     name: Kotlin Lint
@@ -83,9 +89,15 @@ jobs:
         run: ./gradlew lint --no-daemon
 
       - name: Upload Lint Results
-        uses: actions/upload-artifact@v4
-        if: always()
+        uses: sarverenterprises/ci-artifacts/upload@c14f99f2419e01acd895daec7c0aed2206ac0b87
+        # A fork pull request gets no organisation secrets, so skip the
+        # upload there instead of failing the job.
+        if: always() && vars.R2_CI_BUCKET != ''
         with:
           name: android-lint-results
           path: packages/android/feedvalue/build/reports/lint-results*.html
-          retention-days: 7
+        env:
+          R2_CI_ACCESS_KEY_ID: ${{ secrets.R2_CI_ACCESS_KEY_ID }}
+          R2_CI_SECRET_ACCESS_KEY: ${{ secrets.R2_CI_SECRET_ACCESS_KEY }}
+          R2_CI_ENDPOINT: ${{ vars.R2_CI_ENDPOINT }}
+          R2_CI_BUCKET: ${{ vars.R2_CI_BUCKET }}
