@@ -29,12 +29,18 @@ jobs:
         run: swift test -v
 
       - name: Upload Test Results
-        uses: actions/upload-artifact@v4
-        if: always()
+        uses: sarverenterprises/ci-artifacts/upload@398206bcca4467193ec4cf14d58ef50e4e6dda3e
+        # A fork pull request gets no organisation secrets, so skip the
+        # upload there instead of failing the job.
+        if: always() && vars.R2_CI_BUCKET != ''
         with:
           name: ios-test-results
           path: packages/ios/.build/
-          retention-days: 7
+        env:
+          R2_CI_ACCESS_KEY_ID: ${{ secrets.R2_CI_ACCESS_KEY_ID }}
+          R2_CI_SECRET_ACCESS_KEY: ${{ secrets.R2_CI_SECRET_ACCESS_KEY }}
+          R2_CI_ENDPOINT: ${{ vars.R2_CI_ENDPOINT }}
+          R2_CI_BUCKET: ${{ vars.R2_CI_BUCKET }}
 
   lint:
     name: Swift Lint
