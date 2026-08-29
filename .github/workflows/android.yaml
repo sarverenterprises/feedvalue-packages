@@ -46,7 +46,7 @@ jobs:
         run: ./gradlew test --no-daemon
 
       - name: Upload Test Results
-        uses: sarverenterprises/ci-artifacts/upload@398206bcca4467193ec4cf14d58ef50e4e6dda3e
+        uses: sarverenterprises/ci-artifacts/upload@c14f99f2419e01acd895daec7c0aed2206ac0b87
         # A fork pull request gets no organisation secrets, so skip the
         # upload there instead of failing the job.
         if: always() && vars.R2_CI_BUCKET != ''
@@ -89,7 +89,7 @@ jobs:
         run: ./gradlew lint --no-daemon
 
       - name: Upload Lint Results
-        uses: sarverenterprises/ci-artifacts/upload@398206bcca4467193ec4cf14d58ef50e4e6dda3e
+        uses: sarverenterprises/ci-artifacts/upload@c14f99f2419e01acd895daec7c0aed2206ac0b87
         # A fork pull request gets no organisation secrets, so skip the
         # upload there instead of failing the job.
         if: always() && vars.R2_CI_BUCKET != ''
