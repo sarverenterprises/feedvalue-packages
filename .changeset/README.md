@@ -20,7 +20,7 @@ This will prompt you to:
 When ready to release:
 
 ```bash
-pnpm version    # Updates versions based on changesets
+pnpm run version    # Updates versions based on changesets
 pnpm release    # Builds and publishes to npm
 ```
 
